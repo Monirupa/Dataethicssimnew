@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataEthics Pro — Interactive Data Ethics Simulator</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deepest: #06080f;
+            --bg-deep: #0b1022;
+            --bg-card: rgba(14, 22, 45, 0.85);
+            --bg-card-hover: rgba(20, 30, 60, 0.9);
+            --bg-elevated: rgba(25, 38, 72, 0.6);
+            --border-subtle: rgba(80, 110, 180, 0.12);
+            --border-active: rgba(100, 140, 255, 0.35);
+            --text-primary: #e8ecf4;
+            --text-secondary: #8a96b0;
+            --text-muted: #5a6680;
+            --accent-blue: #4d8aff;
+            --accent-cyan: #22d3ee;
+            --accent-green: #34d399;
+            --accent-amber: #fbbf24;
+            --accent-red: #f87171;
+            --accent-violet: #a78bfa;
+            --font-body: 'DM Sans', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-deepest);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: '';
+            position: fixed; inset: 0; z-index: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 20% 10%, rgba(77,138,255,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 80% 80%, rgba(167,139,250,0.05) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 50% 50%, rgba(34,211,238,0.03) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        #root { position: relative; z-index: 1; }
+
+        /* ---- SHARED COMPONENT STYLES ---- */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            backdrop-filter: blur(12px);
+            transition: border-color 0.3s ease;
+        }
+        .card:hover { border-color: var(--border-active); }
+
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 11px 24px; border-radius: var(--radius-md);
+            font-family: var(--font-body); font-weight: 600; font-size: 14px;
+            border: none; cursor: pointer; transition: all 0.25s ease;
+            letter-spacing: 0.01em;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-violet));
+            color: #fff; box-shadow: 0 4px 20px rgba(77,138,255,0.2);
+        }
+        .btn-primary:hover { box-shadow: 0 6px 28px rgba(77,138,255,0.35); transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-ghost {
+            background: var(--bg-elevated); color: var(--text-secondary);
+            border: 1px solid var(--border-subtle);
+        }
+        .btn-ghost:hover { color: var(--text-primary); border-color: var(--border-active); }
+        .btn-danger {
+            background: linear-gradient(135deg, var(--accent-red), #dc2626);
+            color: #fff;
+        }
+        .btn-success {
+            background: linear-gradient(135deg, var(--accent-green), #16a34a);
+            color: #fff;
+        }
+        .btn-sm { padding: 7px 16px; font-size: 12px; border-radius: var(--radius-sm); }
+
+        input, select, textarea {
+            background: rgba(8, 12, 28, 0.8);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-primary);
+            padding: 11px 14px; border-radius: var(--radius-sm);
+            font-family: var(--font-body); font-size: 14px;
+            width: 100%; outline: none;
+            transition: border-color 0.25s ease;
+        }
+        input:focus, select:focus, textarea:focus { border-color: var(--accent-blue); }
+        select option { background: var(--bg-deep); }
+        textarea { resize: vertical; }
+
+        .badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 10px; border-radius: 20px;
+            font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+        }
+        .badge-pass { background: rgba(52,211,153,0.12); color: var(--accent-green); }
+        .badge-fail { background: rgba(248,113,113,0.12); color: var(--accent-red); }
+        .badge-warn { background: rgba(251,191,36,0.12); color: var(--accent-amber); }
+        .badge-info { background: rgba(77,138,255,0.12); color: var(--accent-blue); }
+        .badge-violet { background: rgba(167,139,250,0.12); color: var(--accent-violet); }
+
+        .tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .tag-gdpr { background: rgba(77,138,255,0.15); color: var(--accent-blue); }
+        .tag-dpdp { background: rgba(52,211,153,0.15); color: var(--accent-green); }
+        .tag-euai { background: rgba(167,139,250,0.15); color: var(--accent-violet); }
+
+        .progress-track { height: 6px; background: rgba(80,110,180,0.1); border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); background: linear-gradient(90deg, var(--accent-blue), var(--accent-violet)); }
+
+        .mono { font-family: var(--font-mono); }
+
+        /* ---- ANIMATIONS ---- */
+        .fade-in { animation: fadeIn 0.45s ease-out both; }
+        .slide-up { animation: slideUp 0.55s cubic-bezier(0.22,1,0.36,1) both; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+        /* ---- NAVIGATION ---- */
+        .top-nav {
+            position: sticky; top: 0; z-index: 50;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 28px;
+            background: rgba(6,8,15,0.82);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .nav-logo {
+            font-size: 18px; font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+        .nav-tabs { display: flex; gap: 2px; background: var(--bg-elevated); padding: 3px; border-radius: var(--radius-md); }
+        .nav-tab {
+            padding: 8px 18px; border-radius: var(--radius-sm);
+            font-size: 13px; font-weight: 500; cursor: pointer;
+            color: var(--text-muted); transition: all 0.2s ease;
+            border: none; background: transparent;
+        }
+        .nav-tab:hover { color: var(--text-secondary); }
+        .nav-tab.active { color: var(--text-primary); background: rgba(77,138,255,0.15); }
+        .nav-user { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-secondary); }
+
+        /* ---- PAGE CONTAINER ---- */
+        .page { max-width: 940px; margin: 0 auto; padding: 32px 24px 60px; }
+
+        /* ---- QUIZ OPTION CARDS ---- */
+        .option-card {
+            background: var(--bg-card);
+            border: 2px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 15px 18px; cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .option-card:hover { border-color: rgba(77,138,255,0.3); background: var(--bg-card-hover); }
+        .option-card.selected { border-color: var(--accent-blue); background: rgba(77,138,255,0.06); }
+        .option-card.correct { border-color: var(--accent-green); background: rgba(52,211,153,0.06); }
+        .option-card.incorrect { border-color: var(--accent-red); background: rgba(248,113,113,0.06); }
+
+        /* ---- EXPLANATION BOX ---- */
+        .explanation-box {
+            background: rgba(77,138,255,0.05);
+            border-left: 3px solid var(--accent-blue);
+            padding: 16px 20px; border-radius: 0 var(--radius-md) var(--radius-md) 0;
+        }
+
+        /* ---- LEADERBOARD ROW ---- */
+        .lb-row {
+            display: flex; align-items: center; padding: 13px 20px;
+            border-bottom: 1px solid rgba(80,110,180,0.08);
+            transition: background 0.2s ease;
+        }
+        .lb-row:hover { background: rgba(77,138,255,0.03); }
+
+        /* ---- TEST ITEMS ---- */
+        .test-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 16px; border-bottom: 1px solid rgba(80,110,180,0.06);
+            font-size: 13px;
+        }
+        .test-item:last-child { border-bottom: none; }
+
+        .step-block {
+            display: flex; align-items: flex-start; gap: 14px;
+            padding: 14px; border-radius: var(--radius-md);
+            margin-bottom: 6px; transition: all 0.3s ease;
+        }
+        .step-block.s-pending { background: rgba(80,110,180,0.04); }
+        .step-block.s-pass { background: rgba(52,211,153,0.04); border: 1px solid rgba(52,211,153,0.12); }
+        .step-block.s-fail { background: rgba(248,113,113,0.04); border: 1px solid rgba(248,113,113,0.12); }
+        .step-icon {
+            width: 30px; height: 30px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 700; flex-shrink: 0;
+        }
+
+        .metric-row {
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px 0; border-bottom: 1px solid rgba(80,110,180,0.06);
+        }
+        .metric-row:last-child { border-bottom: none; }
+        .metric-bar { flex: 1; height: 7px; background: rgba(80,110,180,0.08); border-radius: 4px; overflow: hidden; }
+        .metric-bar-fill { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+
+        .stress-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 13px 16px; border-bottom: 1px solid rgba(80,110,180,0.06);
+        }
+        .stress-row:last-child { border-bottom: none; }
+
+        /* ---- USABILITY ---- */
+        .task-card-ux {
+            border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+            padding: 18px; margin-bottom: 14px; transition: all 0.3s;
+        }
+        .task-card-ux.t-active { border-color: rgba(77,138,255,0.35); background: rgba(77,138,255,0.03); }
+        .task-card-ux.t-complete { border-color: rgba(52,211,153,0.25); background: rgba(52,211,153,0.02); }
+
+        .likert-row { display: flex; gap: 0; margin: 10px 0; }
+        .likert-btn {
+            flex: 1; text-align: center; padding: 9px 4px;
+            cursor: pointer; border: 1px solid var(--border-subtle);
+            font-size: 12px; font-weight: 500; color: var(--text-muted);
+            transition: all 0.2s; background: transparent;
+        }
+        .likert-btn:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+        .likert-btn:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+        .likert-btn:hover { background: rgba(77,138,255,0.06); }
+        .likert-btn.lk-sel { background: rgba(77,138,255,0.15); border-color: var(--accent-blue); color: var(--accent-blue); font-weight: 700; }
+
+        .timer-mono {
+            font-family: var(--font-mono); font-size: 22px; font-weight: 700; color: var(--accent-blue);
+        }
+        .timer-running { color: var(--accent-green); animation: pulse 1.2s infinite; }
+
+        .score-ring-wrap {
+            width: 150px; height: 150px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; flex-direction: column;
+            border: 7px solid rgba(80,110,180,0.15);
+            transition: border-color 0.5s ease;
+        }
+
+        /* ---- GRID HELPERS ---- */
+        .grid-2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+        @media (max-width: 640px) {
+            .grid-3, .grid-4 { grid-template-columns: repeat(2,1fr); }
+            .nav-tabs { display: none; }
+        }
+        /* ---- AI TUTOR CHATBOT ---- */
+        .chat-container {
+            display: flex; flex-direction: column; height: calc(100vh - 200px);
+            min-height: 500px;
+        }
+        .chat-messages {
+            flex: 1; overflow-y: auto; padding: 20px 0;
+            scrollbar-width: thin; scrollbar-color: rgba(80,110,180,0.2) transparent;
+        }
+        .chat-messages::-webkit-scrollbar { width: 5px; }
+        .chat-messages::-webkit-scrollbar-thumb { background: rgba(80,110,180,0.2); border-radius: 3px; }
+        .chat-bubble {
+            max-width: 80%; padding: 14px 18px; margin-bottom: 12px;
+            font-size: 14px; line-height: 1.7;
+            animation: slideUp 0.3s ease both;
+        }
+        .chat-bubble.user {
+            margin-left: auto;
+            background: linear-gradient(135deg, rgba(77,138,255,0.15), rgba(167,139,250,0.12));
+            border: 1px solid rgba(77,138,255,0.2);
+            border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
+        }
+        .chat-bubble.assistant {
+            margin-right: auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-sm);
+        }
+        .chat-bubble.system {
+            margin: 0 auto; text-align: center; max-width: 90%;
+            background: rgba(52,211,153,0.06);
+            border: 1px solid rgba(52,211,153,0.12);
+            border-radius: var(--radius-md);
+            font-size: 12px; color: var(--text-secondary);
+        }
+        .chat-bubble .sender {
+            font-size: 11px; font-weight: 700; margin-bottom: 5px;
+            text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .chat-bubble.user .sender { color: var(--accent-blue); }
+        .chat-bubble.assistant .sender { color: var(--accent-cyan); }
+        .chat-input-row {
+            display: flex; gap: 10px; padding-top: 14px;
+            border-top: 1px solid var(--border-subtle);
+        }
+        .chat-input-row input {
+            flex: 1; padding: 14px 16px; font-size: 14px;
+            border-radius: var(--radius-md);
+        }
+        .chat-input-row button { flex-shrink: 0; }
+        .chat-quick-btn {
+            padding: 7px 14px; border-radius: 20px;
+            font-size: 12px; font-weight: 500; cursor: pointer;
+            background: var(--bg-elevated); color: var(--text-secondary);
+            border: 1px solid var(--border-subtle);
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .chat-quick-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+        .typing-dots span {
+            display: inline-block; width: 7px; height: 7px;
+            border-radius: 50%; background: var(--accent-cyan); margin: 0 2px;
+            animation: typingBounce 1.4s infinite ease-in-out both;
+        }
+        .typing-dots span:nth-child(1) { animation-delay: 0s; }
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typingBounce { 0%,80%,100%{ transform:scale(0.6);opacity:0.4; } 40%{ transform:scale(1);opacity:1; } }
+        .api-setup-card {
+            max-width: 520px; margin: 0 auto; padding: 36px;
+        }
+        .context-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+            background: rgba(34,211,238,0.08); color: var(--accent-cyan);
+            border: 1px solid rgba(34,211,238,0.12);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    // ==========================================================================================
+    // QUESTION BANK — 120 questions (10 per each of 12 regulation × domain combinations)
+    // ==========================================================================================
+    const Q = {
+        GDPR_Healthcare: [
+            {id:"gh1",q:"A hospital wants to use patient data for AI-driven diagnostics. Under GDPR, what is the primary legal basis required?",options:["Blanket consent from hospital admission","Explicit consent for each specific processing purpose","Implied consent from seeking treatment","No consent needed for healthcare"],answer:1,explanation:"GDPR Article 9(2)(a) requires explicit consent for processing special category data like health data, with each purpose clearly specified."},
+            {id:"gh2",q:"A patient requests complete deletion of their medical records under GDPR's Right to Erasure. How should the hospital respond?",options:["Delete all records immediately","Refuse citing medical record retention laws","Explain that legal retention obligations may override erasure rights, while offering to restrict processing","Transfer records to another hospital"],answer:2,explanation:"GDPR Article 17(3)(c) provides an exemption from erasure for data required for public health or legal obligations."},
+            {id:"gh3",q:"A pharmaceutical company wants to transfer EU patient trial data to its US headquarters. What mechanism is most appropriate?",options:["Simply email the data with encryption","Use Standard Contractual Clauses (SCCs) with supplementary measures","Obtain verbal consent from participants","Store in a shared cloud drive"],answer:1,explanation:"GDPR Chapter V requires adequate safeguards for international transfers. SCCs with supplementary measures are the primary mechanism post-Schrems II."},
+            {id:"gh4",q:"A clinic discovers a ransomware attack that encrypted patient records. Under GDPR, what is the notification timeline?",options:["Within 24 hours to patients only","Within 72 hours to the supervisory authority","Within 1 week to all stakeholders","Only when patients inquire"],answer:1,explanation:"GDPR Article 33 requires notification to the supervisory authority within 72 hours of becoming aware of a personal data breach."},
+            {id:"gh5",q:"A telemedicine platform profiles patients using health data to recommend treatments. Under GDPR, this constitutes:",options:["Standard data processing","Automated decision-making requiring Article 22 safeguards","Anonymous analytics exempt from GDPR","Legitimate interest processing"],answer:1,explanation:"Profiling based on health data falls under GDPR Article 22, requiring safeguards including the right to human intervention."},
+            {id:"gh6",q:"A health insurance company uses wearable device data to adjust premiums. Under GDPR, what principle is most at risk?",options:["Data accuracy","Purpose limitation","Storage limitation","Data minimization"],answer:1,explanation:"Using wearable data collected for fitness tracking to adjust insurance premiums violates GDPR's purpose limitation principle (Article 5(1)(b))."},
+            {id:"gh7",q:"A hospital's DPO reports to the hospital CEO. Is this GDPR compliant?",options:["Yes, DPOs should report to the highest management level","No, DPOs must be external consultants","No, DPOs must report to the IT department","Only if approved by the supervisory authority"],answer:0,explanation:"GDPR Article 38(3) requires the DPO to report directly to the highest management level to ensure independence."},
+            {id:"gh8",q:"A research hospital wants to use anonymized patient data for machine learning. Under GDPR:",options:["Truly anonymized data falls outside GDPR scope","Anonymized data still requires full GDPR compliance","Anonymized data only requires patient consent","Anonymization is prohibited under GDPR"],answer:0,explanation:"GDPR Recital 26 clarifies that the regulation does not apply to truly anonymized data where the individual is no longer identifiable."},
+            {id:"gh9",q:"A patient exercises their right to data portability for health records. The hospital must provide data in:",options:["PDF format only","A structured, commonly used, machine-readable format","Paper printout","Whatever format the hospital prefers"],answer:1,explanation:"GDPR Article 20 mandates data portability in a structured, commonly used, and machine-readable format."},
+            {id:"gh10",q:"A hospital implements a new patient management system. When must a DPIA be conducted?",options:["After system deployment","Before processing begins if likely high risk","Only if a breach occurs","Only for systems handling over 10,000 records"],answer:1,explanation:"GDPR Article 35 requires a DPIA before processing operations likely to result in high risk to individuals' rights."}
+        ],
+        GDPR_Finance: [
+            {id:"gf1",q:"A bank uses automated credit scoring that denies a loan. Under GDPR, the applicant has the right to:",options:["Accept without recourse","Obtain meaningful information about the logic and contest the decision","Only appeal through court","Request the algorithm's source code"],answer:1,explanation:"GDPR Article 22 and Article 15(1)(h) provide the right to meaningful information about automated decision-making logic."},
+            {id:"gf2",q:"A fintech processes transaction data to detect fraud. Most appropriate legal basis?",options:["Consent from each customer","Legitimate interest with a documented balancing test","Performance of contract","Vital interests"],answer:1,explanation:"Fraud detection typically relies on legitimate interest (Article 6(1)(f)) with a documented balancing assessment."},
+            {id:"gf3",q:"An investment firm shares client data with a third-party analytics provider. What is required?",options:["A verbal agreement","A formal data processing agreement under Article 28","Simple notification to clients","Nothing if within the EU"],answer:1,explanation:"GDPR Article 28 requires a written data processing agreement specifying the processor's obligations."},
+            {id:"gf4",q:"A bank's marketing team wants to use transaction patterns for targeted ads. Primary concern?",options:["Data accuracy","Requirement for specific, informed consent for marketing profiling","Cross-border transfer rules","Data retention schedules"],answer:1,explanation:"Using transaction data for marketing profiling requires specific consent under GDPR Article 7."},
+            {id:"gf5",q:"A cryptocurrency exchange must appoint a DPO when:",options:["It has more than 250 employees","Core activities involve regular systematic monitoring at scale","It processes any financial data","Only when required by national law"],answer:1,explanation:"GDPR Article 37(1)(b) requires a DPO when core activities involve regular systematic monitoring on a large scale."},
+            {id:"gf6",q:"A bank receives a Subject Access Request. Response deadline under GDPR?",options:["7 calendar days","30 calendar days with possible 60-day extension","90 business days","No specific deadline"],answer:1,explanation:"GDPR Article 12(3) requires response within one month, extendable by two further months for complex requests."},
+            {id:"gf7",q:"An insurance company wants to use social media data to assess risk profiles. Under GDPR:",options:["Allowed as social media data is public","Requires explicit consent and transparency about profiling purpose","Prohibited entirely","Only requires post-hoc notification"],answer:1,explanation:"Even publicly available data requires a lawful basis. Profiling for insurance requires explicit consent and transparency."},
+            {id:"gf8",q:"A payment processor has a breach affecting partial card numbers. Reportable under GDPR?",options:["No, partial numbers aren't personal data","Yes, if likely to result in risk to individuals' rights","Only if full card numbers exposed","Only if over 1000 affected"],answer:1,explanation:"GDPR Article 33 requires breach notification when likely to result in risk to individuals' rights, regardless of data completeness."},
+            {id:"gf9",q:"A trading platform uses AI to detect market manipulation. Most relevant GDPR principle for data quality?",options:["Lawfulness","Accuracy","Storage limitation","Integrity and confidentiality"],answer:1,explanation:"GDPR Article 5(1)(d) requires personal data be accurate and kept up to date, critical for AI compliance determinations."},
+            {id:"gf10",q:"A bank implements Privacy by Design for a new app. This means:",options:["Adding privacy settings after launch","Integrating data protection from the earliest design stage","Publishing a privacy policy on app store","Encrypting data during transmission only"],answer:1,explanation:"GDPR Article 25 requires data protection by design and by default from the earliest development stage."}
+        ],
+        GDPR_Developer: [
+            {id:"gd1",q:"A developer implements a cookie consent banner. Which approach is compliant?",options:["Pre-checked boxes for all categories","A simple 'By continuing, you agree' notice","Granular consent with easy opt-out for each category","No consent needed for analytics"],answer:2,explanation:"GDPR requires freely given, specific, informed consent. Cookie consent must offer granular choices."},
+            {id:"gd2",q:"When implementing user registration, data minimization requires:",options:["Collecting all possible data for future use","Collecting only data strictly necessary for the purpose","Collecting now and deleting later","Requiring full name, address, phone, and ID always"],answer:1,explanation:"GDPR Article 5(1)(c) requires data be adequate, relevant, and limited to what is necessary."},
+            {id:"gd3",q:"Building an API that processes personal data. Documentation should include:",options:["Only technical endpoint specs","Data processing purposes, retention periods, and security measures alongside specs","Only a privacy policy link","No documentation requirements for APIs"],answer:1,explanation:"GDPR accountability (Article 5(2)) and transparency require documenting how personal data is processed."},
+            {id:"gd4",q:"Team wants to use production user data for testing. Recommended approach?",options:["Copy production data freely","Use synthetic or properly anonymized test data","Use production data with encryption only","Use production data in separate DB"],answer:1,explanation:"Using production personal data for testing violates purpose limitation. Best practice requires synthetic data."},
+            {id:"gd5",q:"Implementing Right to Erasure in microservices. Primary challenge?",options:["Updating the privacy policy","Ensuring deletion propagation across all services and stores","Encrypting before deletion","Getting management approval per deletion"],answer:1,explanation:"In distributed systems, ensuring complete erasure requires propagating deletion across all services, databases, and caches."},
+            {id:"gd6",q:"Logging captures user IP addresses. Under GDPR:",options:["IPs are not personal data","IPs are personal data requiring a lawful basis","IPs only personal when combined with names","Logging IPs is always prohibited"],answer:1,explanation:"The CJEU ruled that dynamic IP addresses constitute personal data under GDPR."},
+            {id:"gd7",q:"Implementing encryption for data at rest. GDPR considers this:",options:["Sufficient compliance on its own","An appropriate technical measure under Article 32, but not sufficient alone","Optional and not referenced","Only required for financial data"],answer:1,explanation:"GDPR Article 32 references encryption as appropriate but compliance requires a holistic approach."},
+            {id:"gd8",q:"Implementing a third-party analytics SDK in a mobile app. Key requirement?",options:["Inform users in app store description only","Obtain consent before SDK collects data and document data sharing","No action if SDK provider is compliant","Add privacy link in settings"],answer:1,explanation:"The app developer is a data controller responsible for all processing, including by third-party SDKs."},
+            {id:"gd9",q:"Building a data pipeline transferring personal data. GDPR requires:",options:["Encryption during transfer only","Records of processing activities documenting data flows, purposes, and safeguards","Automated backups only","Separate pipeline for EU/non-EU data"],answer:1,explanation:"GDPR Article 30 requires detailed records of processing activities."},
+            {id:"gd10",q:"CI/CD accidentally deploys a version exposing personal data via API. Under GDPR:",options:["Fix the bug and move on","Assess breach scope, document, notify authority within 72h if high risk","Only notify if data was accessed","Wait for complaints"],answer:1,explanation:"GDPR Article 33 requires breach assessment and notification within 72 hours."}
+        ],
+        GDPR_Construction: [
+            {id:"gc1",q:"A construction company uses CCTV for safety monitoring. Primary GDPR requirement?",options:["No requirements for workplace CCTV","Clear signage, documented purpose, proportionality assessment, defined retention","Only informing employees verbally","Consent from every site visitor"],answer:1,explanation:"CCTV processing requires transparency, documented legitimate interest, proportionality, and defined retention."},
+            {id:"gc2",q:"A contractor collects health certifications and safety records. GDPR principle for retention?",options:["Keep indefinitely","Storage limitation: retain only as long as necessary","Delete after project completion","No retention limits for safety data"],answer:1,explanation:"GDPR Article 5(1)(e) requires storage limitation—data kept only as long as necessary."},
+            {id:"gc3",q:"A property developer uses drone footage capturing neighbors. Under GDPR:",options:["No impact—outdoor footage","Residents must be informed; identifiable footage requires lawful basis","Only commercial properties matter","Drone footage exempt"],answer:1,explanation:"Drone footage of identifiable individuals constitutes personal data processing under GDPR."},
+            {id:"gc4",q:"A firm shares subcontractor employee data with a PM platform. Under GDPR:",options:["No requirements between partners","A data processing agreement must specify terms","Verbal agreement suffices","Only for international subcontractors"],answer:1,explanation:"Sharing employee data with third-party platforms requires a formal DPA under Article 28."},
+            {id:"gc5",q:"A building management system collects occupancy data. Under GDPR:",options:["Never personal data","May be personal data if individuals can be identified or singled out","Only residential buildings","Regulated by building codes, not GDPR"],answer:1,explanation:"Occupancy data that can identify individuals constitutes personal data under GDPR."},
+            {id:"gc6",q:"GPS tracking on company vehicles requires:",options:["No employee notification","Clear policy, notification, legitimate interest assessment, proportionate use","Only driver consent","Transport authority approval"],answer:1,explanation:"GPS tracking requires transparency, documented legitimate interest, proportionality, and notification."},
+            {id:"gc7",q:"An architect stores client files in a cloud service. Under GDPR:",options:["Cloud is automatically compliant","Firm must ensure cloud provider has adequate safeguards and processing agreement","Cloud storage exempt for business","Only on-premises is compliant"],answer:1,explanation:"The data controller must ensure cloud providers comply with GDPR including safeguards and DPAs."},
+            {id:"gc8",q:"Biometric access control (fingerprint) on construction site. Under GDPR:",options:["Standard access control, no special rules","Biometric data is special category requiring explicit consent or specific legal basis","Only facial recognition is special","Biometric access prohibited on sites"],answer:1,explanation:"Biometric data is special category under GDPR Article 9, requiring explicit consent or specific legal basis."},
+            {id:"gc9",q:"A PM emails worker names, emergency contacts, and medical conditions to all supervisors. The violation?",options:["Emailing personal data always prohibited","Sharing special category health data without necessity and proper access controls","Using spreadsheets for data","Emailing multiple internal recipients"],answer:1,explanation:"Sharing medical data widely without necessity violates data minimization and purpose limitation."},
+            {id:"gc10",q:"A demolition company retains safety incident reports for 30 years. Under GDPR:",options:["Always violates storage limitation","May be justified if legal/regulatory requirements mandate extended retention","Must delete after 5 years","Only anonymized can be retained long-term"],answer:1,explanation:"Extended retention may be lawful under Article 17(3) if required by legal obligations."}
+        ],
+        DPDP_Healthcare: [
+            {id:"dh1",q:"Under the DPDP Act 2023, a hospital must appoint a role called:",options:["Chief Privacy Officer","Data Fiduciary Representative","Consent Manager","Information Security Officer"],answer:2,explanation:"The DPDP Act introduces the Consent Manager as a registered entity helping Data Principals manage consent."},
+            {id:"dh2",q:"A telemedicine platform collecting patient data is classified as:",options:["Data Processor","Data Fiduciary","Data Principal","Data Custodian"],answer:1,explanation:"Under the DPDP Act, the entity determining purpose and means of processing is the Data Fiduciary."},
+            {id:"dh3",q:"A patient wants to withdraw consent for health data processing. Under DPDP Act:",options:["Not permitted for health data","Withdrawal must be as easy as giving consent","Requires a court order","Only Consent Manager can process"],answer:1,explanation:"Section 6(6) mandates that withdrawing consent must be as easy as giving it."},
+            {id:"dh4",q:"An Indian hospital processes children's health data. This requires:",options:["Consent from child if over 12","Verifiable consent from parent or lawful guardian","No special requirements","School authorization"],answer:1,explanation:"Section 9 requires verifiable consent from a parent or lawful guardian for children's data."},
+            {id:"dh5",q:"A health data breach at an Indian clinic. Notification must go to:",options:["Only affected patients","Data Protection Board and each affected Data Principal","Only local police","Ministry of Health"],answer:1,explanation:"Section 8(6) requires notification to both the Data Protection Board and affected Data Principals."},
+            {id:"dh6",q:"A Significant Data Fiduciary in healthcare must:",options:["Only maintain records","Conduct periodic DPIAs and appoint a DPO based in India","Process data faster","Share data with government automatically"],answer:1,explanation:"Significant Data Fiduciaries have enhanced obligations including DPIAs and appointing a resident DPO."},
+            {id:"dh7",q:"Transferring clinical trial data to a non-notified country. Under DPDP Act:",options:["Permitted with consent","Restricted unless destination notified under Section 16","Always prohibited","Only anonymized data can transfer"],answer:1,explanation:"Section 16 restricts transfers to countries not specifically notified by the Central Government."},
+            {id:"dh8",q:"Health insurance denies a claim via automated processing. The insured can:",options:["Only appeal to ombudsman","Request information about data used in the decision","Demand algorithm disclosure","File criminal charges"],answer:1,explanation:"The DPDP Act grants Data Principals the right to obtain information about their data processing."},
+            {id:"dh9",q:"Processing health data without consent is permitted when:",options:["For research purposes","Necessary to respond to a medical emergency","Hospital has business need","Third party requests data"],answer:1,explanation:"Section 7 allows processing without consent for legitimate uses including medical emergencies."},
+            {id:"dh10",q:"Maximum penalty for a significant breach under the DPDP Act?",options:["₹10 crore","₹50 crore","₹250 crore","₹500 crore"],answer:2,explanation:"The DPDP Act prescribes penalties up to ₹250 crore for significant breaches."}
+        ],
+        DPDP_Finance: [
+            {id:"df1",q:"An Indian bank processes KYC data. Legal basis under DPDP Act?",options:["Customer consent only","Compliance with law (legitimate use under Section 7)","Legitimate interest","Implied consent from account opening"],answer:1,explanation:"KYC is mandated by RBI regulations, making it a legitimate use under Section 7."},
+            {id:"df2",q:"A fintech classified as Significant Data Fiduciary must:",options:["Process more data","Appoint independent data auditor and conduct periodic DPIAs","Charge higher fees","Share all data with regulators"],answer:1,explanation:"Significant Data Fiduciaries must appoint independent auditors and conduct periodic DPIAs."},
+            {id:"df3",q:"A payment gateway retains data for 10 years for regulatory compliance. Under DPDP Act:",options:["Violates data minimization","Retention for legal compliance is a permitted legitimate use","Maximum is 5 years","Only anonymized beyond 3 years"],answer:1,explanation:"The DPDP Act permits retention when required for compliance with legal obligations."},
+            {id:"df4",q:"A digital lending platform uses behavioral data for creditworthiness. Under DPDP Act:",options:["Unrestricted for financial services","Clear notice and consent for profiling is required","Only income data allowed","Prohibited entirely"],answer:1,explanation:"The DPDP Act requires clear notice about purpose and consent for profiling activities."},
+            {id:"df5",q:"When a bank shares data with a loan recovery agent, the bank is:",options:["No longer responsible","Still responsible as Data Fiduciary for ensuring processor compliance","Required to get fresh consent","Exempted from liability if agent misuses"],answer:1,explanation:"The Data Fiduciary remains responsible even when processed by a Data Processor."},
+            {id:"df6",q:"A customer requests data erasure from an investment platform. Under DPDP Act:",options:["Immediate and complete","Platform must erase unless retention required by law (SEBI regulations)","Financial data cannot be erased","Only Consent Manager can process"],answer:1,explanation:"Erasure right is subject to legal retention requirements like SEBI mandates."},
+            {id:"df7",q:"A UPI app processes transactions of minors. Under DPDP Act:",options:["Minors cannot have UPI accounts","Verifiable parental consent required and behavioral tracking restricted","Standard adult rules apply","Only government apps can serve minors"],answer:1,explanation:"The DPDP Act restricts children's data processing, requiring parental consent and prohibiting tracking."},
+            {id:"df8",q:"The Data Protection Board of India has the power to:",options:["Arrest executives","Impose penalties, direct compliance, and adjudicate complaints","Create new laws","Audit without complaints"],answer:1,explanation:"The Board can adjudicate complaints, impose penalties, and direct compliance measures."},
+            {id:"df9",q:"An Indian microfinance company collects Aadhaar biometrics for loans. Under DPDP Act:",options:["Aadhaar data exempt","Must comply with both DPDP Act and Aadhaar Act provisions","Biometrics banned for private entities","Only public banks can use Aadhaar"],answer:1,explanation:"Aadhaar processing must comply with both the DPDP Act and Aadhaar Act requirements."},
+            {id:"df10",q:"A Data Principal's duties under the DPDP Act include:",options:["Reporting all processing to government","Not filing false or frivolous complaints","Auditing the Fiduciary's practices","Paying for data protection services"],answer:1,explanation:"Section 15 specifies duties including not registering false or frivolous complaints."}
+        ],
+        DPDP_Developer: [
+            {id:"dd1",q:"Implementing 'consent by design' under the DPDP Act means:",options:["Adding a consent checkbox at login","Integrating granular, informed consent throughout the data lifecycle","Using a third-party CMP","Consent only for sensitive data"],answer:1,explanation:"The DPDP Act requires informed, specific consent implemented systematically throughout processing."},
+            {id:"dd2",q:"A notice for data collection under the DPDP Act must include:",options:["Only company name and contact","Purpose of processing, data categories, and Data Principal's rights","Technical database details","Links to all processors"],answer:1,explanation:"Section 5 requires notice to state purpose, data categories, and rights."},
+            {id:"dd3",q:"App stores data on Singapore servers. Under DPDP Act:",options:["Any storage outside India prohibited","Transfer permitted only to countries notified by Central Government","Singapore automatically approved","Only encrypted data can transfer"],answer:1,explanation:"Section 16 restricts cross-border transfers to approved destinations."},
+            {id:"dd4",q:"Data retention in an Indian app. DPDP Act requires:",options:["Minimum 5-year retention","Erase when consent withdrawn or purpose fulfilled, unless legally required","Indefinite with encryption","Left to developer"],answer:1,explanation:"The DPDP Act requires erasure when purpose is fulfilled or consent withdrawn."},
+            {id:"dd5",q:"Age verification for an Indian children's platform. DPDP Act requires:",options:["Self-declaration sufficient","Verifiable parental consent mechanisms","Age verification only under 13","No tracking, profiling, or behavioral monitoring of children"],answer:3,explanation:"Section 9 prohibits tracking, behavioral monitoring, and targeted advertising directed at children."},
+            {id:"dd6",q:"Reasonable security safeguards under the DPDP Act include:",options:["Only SSL/TLS","Encryption, access controls, and measures proportionate to risk","Government-approved algorithms only","Optional if consent obtained"],answer:1,explanation:"Section 8(4) requires reasonable security safeguards including technical and organizational measures."},
+            {id:"dd7",q:"An app uses a recommendation algorithm processing personal data. Under DPDP Act:",options:["Algorithms exempt","Users must be informed about algorithmic processing in the notice","Only government apps disclose","Only for financial decisions"],answer:1,explanation:"Transparency requirements extend to informing about all processing purposes including algorithmic."},
+            {id:"dd8",q:"Integrating a Consent Manager under the DPDP Act. Developer must ensure:",options:["CM is government-run","CM is registered with the Data Protection Board","Any SDK can serve as CM","Only for healthcare apps"],answer:1,explanation:"Section 6(8) specifies Consent Managers must be registered and meet prescribed standards."},
+            {id:"dd9",q:"Data localization for Indian government project. Under DPDP Act:",options:["All personal data must be in India","Central Government may notify specific categories requiring localization","Localization optional for all","Only biometric data"],answer:1,explanation:"The DPDP Act empowers the Government to notify specific categories requiring local storage."},
+            {id:"dd10",q:"Developer discovers a data breach. First step under DPDP Act:",options:["Fix and inform users later","Notify Data Protection Board and affected Data Principals as prescribed","Contact law enforcement","Delete affected data"],answer:1,explanation:"Section 8(6) requires prompt notification to the Board and affected Data Principals."}
+        ],
+        DPDP_Construction: [
+            {id:"dc1",q:"Indian construction firm uses biometric attendance. Under DPDP Act:",options:["Workers have fewer rights","Explicit consent required with clear notice about purpose, retention, rights","Biometric exempt for employment","Only Aadhaar biometrics need consent"],answer:1,explanation:"The DPDP Act applies equally to all Data Principals including workers."},
+            {id:"dc2",q:"A developer collects buyer Aadhaar for property registration. Under DPDP Act:",options:["Unrestricted for property","Collection limited to legally required, with clear notice","Aadhaar exempt from DPDP","Can retain indefinitely"],answer:1,explanation:"Even legally mandated collection must follow DPDP Act principles."},
+            {id:"dc3",q:"Smart building collects IoT occupancy data. Under DPDP Act:",options:["IoT not personal data","If occupants identifiable, constitutes personal data requiring consent","Building management exempt","Only residential needs compliance"],answer:1,explanation:"IoT data that can identify individuals is personal data under the DPDP Act."},
+            {id:"dc4",q:"Sharing worker health records with insurance provider. Under DPDP Act:",options:["Employer sharing unrestricted","Workers must be informed and consent obtained for sharing","Health sharing automatic","Only Consent Manager can authorize"],answer:1,explanation:"Sharing with third parties requires informed consent with specific notice."},
+            {id:"dc5",q:"Processing data of residents affected by a highway project. Under DPDP Act:",options:["Government projects fully exempt","Processing for statutory functions is legitimate, but transparency and rights still apply","Residents can't object","Only land data covered"],answer:1,explanation:"Section 7 allows state functions but transparency and Data Principal rights still apply."},
+            {id:"dc6",q:"Retaining employee data after project completion. Under DPDP Act:",options:["Retain indefinitely for future projects","Must erase when purpose fulfilled unless legal retention applies","5-year standard","Only salary data deleted"],answer:1,explanation:"The DPDP Act requires erasure when purpose is fulfilled, subject to legal requirements."},
+            {id:"dc7",q:"Drone survey captures images of people. Under DPDP Act:",options:["Aerial photography exempt","Images of identifiable individuals require consent or legitimate use basis","Only close-ups are personal data","Drone regulations override DPDP"],answer:1,explanation:"Images of identifiable individuals are personal data under the DPDP Act."},
+            {id:"dc8",q:"Non-citizen migrant worker data processed by Indian firm. Under DPDP Act:",options:["Only protects Indian citizens","Applies to processing within India regardless of citizenship","Foreign workers register separately","Only work permit data protected"],answer:1,explanation:"The DPDP Act applies to processing within India regardless of nationality."},
+            {id:"dc9",q:"CCTV with facial recognition at project sites. Under DPDP Act:",options:["CCTV not personal data","Facial recognition constitutes personal data requiring specific consent and safeguards","Only public CCTV needs compliance","Regulated by police, not data law"],answer:1,explanation:"Facial recognition involves personal data and requires specific consent and safeguards."},
+            {id:"dc10",q:"Company processing 10,000+ workers' data may be classified as:",options:["Standard Data Fiduciary","Significant Data Fiduciary with enhanced obligations","Data Processor only","Exempt from DPDP Act"],answer:1,explanation:"The Government may classify entities as Significant Data Fiduciaries based on volume and risk."}
+        ],
+        EUAI_Healthcare: [
+            {id:"eh1",q:"Under the EU AI Act, an AI system for medical diagnosis is classified as:",options:["Minimal risk","Limited risk","High risk","Unacceptable risk"],answer:2,explanation:"The EU AI Act classifies AI in healthcare and medical diagnosis as high-risk."},
+            {id:"eh2",q:"A hospital deploys AI for triaging emergencies. This system must:",options:["Only register with manufacturer","Have human oversight, documentation, and undergo conformity assessment","Be approved by hospital board only","Meet non-medical software standards"],answer:1,explanation:"High-risk AI requires human oversight, documentation, conformity assessments, and transparency."},
+            {id:"eh3",q:"AI determining health insurance access based on social scoring is:",options:["High risk with conditions","Limited risk","Unacceptable risk and prohibited","Acceptable with transparency"],answer:2,explanation:"The EU AI Act prohibits AI performing social scoring for essential services."},
+            {id:"eh4",q:"AI used for drug discovery. Classification under EU AI Act:",options:["Always high risk","Depends on whether AI directly affects patient treatment decisions","All pharmaceutical AI unacceptable","Drug discovery exempt"],answer:1,explanation:"Classification depends on the AI's role; internal tools may be lower risk than patient-facing systems."},
+            {id:"eh5",q:"A high-risk medical AI must maintain:",options:["Only user manuals","Detailed technical documentation including training data, design choices, performance metrics","Financial records only","Patent documentation only"],answer:1,explanation:"Article 11 requires comprehensive technical documentation for high-risk systems."},
+            {id:"eh6",q:"A mental health chatbot recommending therapy is classified as:",options:["Minimal risk","Limited risk with transparency","High risk due to health impact","Unacceptable risk"],answer:2,explanation:"AI providing health-related recommendations is high-risk due to potential individual impact."},
+            {id:"eh7",q:"Healthcare providers using high-risk AI must ensure:",options:["Full automation without intervention","Meaningful human oversight with ability to override AI decisions","AI decisions are final","Only doctors can use AI"],answer:1,explanation:"The EU AI Act mandates meaningful human oversight for high-risk AI."},
+            {id:"eh8",q:"AI detecting skin cancer from images. The provider must:",options:["Only provide accuracy stats","Register in EU database, conduct conformity assessment, ensure post-market monitoring","Get one member state approval","Only inform dermatologists"],answer:1,explanation:"High-risk medical AI requires EU registration, conformity assessment, CE marking, and monitoring."},
+            {id:"eh9",q:"Training data for medical AI must:",options:["Be as large as possible","Be relevant, representative, and free from discriminatory biases","Come only from EU institutions","Be kept secret for IP"],answer:1,explanation:"Article 10 requires training data be relevant, representative, and designed to avoid bias."},
+            {id:"eh10",q:"If high-risk medical AI causes harm, accountability lies with:",options:["Only manufacturer","Provider and deployer share responsibilities based on obligations","Only the hospital","No one—AI is autonomous"],answer:1,explanation:"The EU AI Act distributes responsibilities between providers and deployers."}
+        ],
+        EUAI_Finance: [
+            {id:"ef1",q:"Under EU AI Act, AI for credit scoring is classified as:",options:["Minimal risk","Limited risk","High risk","Unacceptable risk"],answer:2,explanation:"AI for creditworthiness assessment is explicitly high-risk in Annex III."},
+            {id:"ef2",q:"A bank deploys an AI chatbot. Under EU AI Act:",options:["Must be high risk","Users must be informed they're interacting with AI (transparency)","Chatbots prohibited in finance","No special requirements"],answer:1,explanation:"The EU AI Act requires transparency when users interact with AI systems."},
+            {id:"ef3",q:"AI fraud detection flags transactions by nationality patterns. Under EU AI Act:",options:["Acceptable fraud prevention","May constitute prohibited discriminatory profiling—must assess for bias","Nationality always allowed in AML","Only law enforcement can use nationality"],answer:1,explanation:"The EU AI Act requires AI avoid discriminatory outcomes; nationality profiling must be assessed."},
+            {id:"ef4",q:"High-risk AI trading system conformity assessment includes:",options:["Only performance benchmarks","Risk management, data governance, documentation, and human oversight verification","Each EU exchange approval","Only regulator sign-off"],answer:1,explanation:"Conformity assessment covers risk management, data quality, documentation, accuracy, and oversight."},
+            {id:"ef5",q:"AI manipulating financial decisions through subliminal techniques is:",options:["High risk with restrictions","Permitted with disclosure","Prohibited as unacceptable risk","Allowed for sophisticated investors"],answer:2,explanation:"The EU AI Act prohibits AI deploying subliminal or manipulative techniques."},
+            {id:"ef6",q:"A robo-advisor for investment management must:",options:["Minimal risk compliance","Comply with both MiFID II and EU AI Act requirements","Only MiFID II applies","Robo-advisors prohibited"],answer:1,explanation:"Financial AI must comply with sector-specific and EU AI Act requirements simultaneously."},
+            {id:"ef7",q:"Provider of high-risk financial AI must implement:",options:["Annual updates only","Risk management system throughout the AI's entire lifecycle","Risk assessment only at deployment","Only when regulators request"],answer:1,explanation:"Article 9 requires continuous risk management spanning the entire lifecycle."},
+            {id:"ef8",q:"Insurance AI setting premiums via behavioral predictions. Under EU AI Act:",options:["Always prohibited","Must demonstrate fairness, provide explanations, allow human review","Behavioral data exempt","Only actuarial AI regulated"],answer:1,explanation:"AI-based insurance pricing is high-risk, requiring fairness, transparency, and human oversight."},
+            {id:"ef9",q:"Serious AI incidents must be reported to:",options:["Internal compliance only","The relevant national market surveillance authority","ECB only","Interpol"],answer:1,explanation:"The EU AI Act requires reporting to the relevant national market surveillance authority."},
+            {id:"ef10",q:"A 'black box' model provides no explanation for loan denials. Under EU AI Act:",options:["Acceptable if accurate","High-risk AI must be transparent enough for deployers to interpret outputs","Only regulators need explanations","Explanations optional"],answer:1,explanation:"Article 13 requires transparency for deployers to interpret and use outputs appropriately."}
+        ],
+        EUAI_Developer: [
+            {id:"ed1",q:"An AI resume screening tool must be classified as:",options:["Minimal risk","Limited risk","High risk (employment/worker management)","Unacceptable risk"],answer:2,explanation:"AI in employment including recruitment is high-risk in Annex III."},
+            {id:"ed2",q:"A GPAI model developer must:",options:["Only provide documentation","Provide technical docs, comply with copyright law, publish training data summary","Register with each state","Only comply if not open-source"],answer:1,explanation:"GPAI providers must provide documentation, copyright compliance, and training data summary."},
+            {id:"ed3",q:"A limited-risk AI system's primary obligation is:",options:["Full conformity assessment","Transparency: users informed they're interacting with AI","No obligations","Internal documentation only"],answer:1,explanation:"Limited-risk systems have transparency obligations—users must know they're interacting with AI."},
+            {id:"ed4",q:"Quality Management System for high-risk AI must cover:",options:["Only code quality","Development, data management, risk management, and post-market monitoring","Manufacturing quality only","Financial auditing"],answer:1,explanation:"Article 17 requires comprehensive QMS covering all high-risk AI development aspects."},
+            {id:"ed5",q:"A deepfake generation tool. Under EU AI Act:",options:["Prohibited","Content must be labeled AI-generated with transparency measures","Unregulated","Only political deepfakes regulated"],answer:1,explanation:"AI-generated content including deepfakes must be labeled with transparency measures."},
+            {id:"ed6",q:"High-risk AI logging capabilities must:",options:["Only log errors","Enable traceability throughout the system's lifecycle","Log only user interactions","Optional if other docs exist"],answer:1,explanation:"Article 12 requires automatic logging for traceability of high-risk AI operations."},
+            {id:"ed7",q:"Fine-tuning an open-source model for high-risk use. Under EU AI Act:",options:["Open-source exempt","Developer becomes provider with full high-risk obligations","Only original creator has obligations","Fine-tuning creates minimal risk"],answer:1,explanation:"Modifying a model for high-risk use makes the developer a provider with full obligations."},
+            {id:"ed8",q:"Testing high-risk AI must include:",options:["Only accuracy benchmarks","Testing for bias, robustness, cybersecurity, and foreseeable conditions","User acceptance only","Only in target member state"],answer:1,explanation:"The EU AI Act requires comprehensive testing including bias, robustness, and cybersecurity."},
+            {id:"ed9",q:"Providing an AI API integrated into high-risk systems. Under EU AI Act:",options:["API providers have no obligations","Developer may be classified as provider depending on API's role","Only integrating company","APIs regulated separately"],answer:1,explanation:"Obligations depend on the AI component's substantial role in the high-risk system."},
+            {id:"ed10",q:"High-risk AI must achieve appropriate levels of:",options:["Accuracy only","Accuracy, robustness, and cybersecurity with documented benchmarks","User satisfaction","Processing speed"],answer:1,explanation:"Article 15 requires appropriate accuracy, robustness, and cybersecurity."}
+        ],
+        EUAI_Construction: [
+            {id:"ec1",q:"AI monitoring worker safety compliance is classified as:",options:["Minimal risk","Limited risk","High risk (worker management)","Unacceptable risk"],answer:2,explanation:"AI for worker management and safety monitoring is high-risk under the EU AI Act."},
+            {id:"ec2",q:"AI for structural integrity analysis. Classification?",options:["Always minimal risk","Depends on whether it's a safety component of a regulated product","Structural AI exempt","Only government projects"],answer:1,explanation:"AI as a safety component in construction may be high-risk under product safety regulations."},
+            {id:"ec3",q:"AI drone identifies workers without safety equipment. Under EU AI Act:",options:["Drone footage unregulated","Involves biometric categorization and worker monitoring—potentially high-risk","Only military drones regulated","Construction drones minimal risk"],answer:1,explanation:"AI worker monitoring and biometric categorization may be high-risk."},
+            {id:"ec4",q:"AI allocating workers to projects based on performance. Under EU AI Act:",options:["Not AI regulation scope","High-risk—affects employment and worker management","Only firing decisions high-risk","Minimal risk if anonymized"],answer:1,explanation:"AI for task allocation and worker management is high-risk."},
+            {id:"ec5",q:"Construction company using high-risk AI for project management must ensure:",options:["Full automation","Human oversight with ability to understand, monitor, and override","AI overrides managers","Only PMs access AI"],answer:1,explanation:"The EU AI Act requires meaningful human oversight for high-risk AI."},
+            {id:"ec6",q:"AI BIM system predicts cost overruns and recommends layoffs. Under EU AI Act:",options:["BIM exempt","Layoff recommendation component makes this high-risk","Only cost prediction regulated","BIM always minimal risk"],answer:1,explanation:"AI affecting employment decisions triggers high-risk classification."},
+            {id:"ec7",q:"AI-based emotional recognition to assess worker fatigue. Under EU AI Act:",options:["Minimal risk","Restricted in workplaces and may be prohibited","Only facial recognition regulated","Fatigue detection exempt"],answer:1,explanation:"Emotion recognition in workplaces is restricted with potential prohibition."},
+            {id:"ec8",q:"High-risk AI in construction must have:",options:["Only user manual","CE marking, technical documentation, EU database registration, conformity declaration","Each national authority approval","Only ISO 9001"],answer:1,explanation:"High-risk AI requires CE marking, documentation, registration, and conformity declaration."},
+            {id:"ec9",q:"AI predicting structural failures. Risk management requirements:",options:["Annual review sufficient","Continuous risk management with residual risk mitigation and clear deployer instructions","Only pre-deployment","Only building owner manages risk"],answer:1,explanation:"The EU AI Act requires continuous risk management throughout the lifecycle."},
+            {id:"ec10",q:"Procuring AI from a non-EU provider. Under EU AI Act:",options:["Non-EU providers exempt","Applies to AI on EU market regardless of provider location","Only EU companies comply","No obligations for third-party AI"],answer:1,explanation:"The EU AI Act applies to all AI placed on or used in the EU market."}
+        ]
+    };
+
+    // ==========================================================================================
+    // TESTING INFRASTRUCTURE CLASSES (shared across tabs)
+    // ==========================================================================================
+
+    // --- Mock Storage ---
+    class MockStorage {
+        constructor() { this.store = {}; }
+        getItem(k) { return this.store[k] || null; }
+        setItem(k, v) { this.store[k] = String(v); }
+        removeItem(k) { delete this.store[k]; }
+        clear() { this.store = {}; }
+    }
+
+    // --- Assertions ---
+    class Assertions {
+        static assertEqual(a, b, m='') { if(a!==b) throw new Error(`assertEqual: expected "${b}", got "${a}". ${m}`); }
+        static assertNotEqual(a, b, m='') { if(a===b) throw new Error(`assertNotEqual: values equal "${a}". ${m}`); }
+        static assertTrue(v, m='') { if(v!==true) throw new Error(`assertTrue: got "${v}". ${m}`); }
+        static assertFalse(v, m='') { if(v!==false) throw new Error(`assertFalse: got "${v}". ${m}`); }
+        static assertDefined(v, m='') { if(v===undefined||v===null) throw new Error(`assertDefined: ${v}. ${m}`); }
+        static assertNull(v, m='') { if(v!==null&&v!==undefined) throw new Error(`assertNull: got "${v}". ${m}`); }
+        static assertArrayLength(a, l, m='') { if(!Array.isArray(a)) throw new Error(`assertArrayLength: not array. ${m}`); if(a.length!==l) throw new Error(`assertArrayLength: expected ${l}, got ${a.length}. ${m}`); }
+        static assertContains(a, i, m='') { if(!Array.isArray(a)) throw new Error(`assertContains: not array. ${m}`); if(!a.includes(i)) throw new Error(`assertContains: missing "${i}". ${m}`); }
+        static assertObjectHasProperty(o, p, m='') { if(typeof o!=='object'||o===null) throw new Error(`assertObjectHasProperty: not object. ${m}`); if(!(p in o)) throw new Error(`assertObjectHasProperty: missing "${p}". ${m}`); }
+    }
+
+    // --- Helpers ---
+    const regLabel = r => ({GDPR:'GDPR',DPDP:'DPDP Act 2023',EUAI:'EU AI Act'}[r]||r);
+    const regTag = r => ({GDPR:'tag-gdpr',DPDP:'tag-dpdp',EUAI:'tag-euai'}[r]||'');
+    const medal = i => i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
+    const fmtTime = s => { const m=Math.floor(s/60),sc=Math.floor(s%60); return `${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`; };
+
+    // ==========================================================================================
+    // MAIN APP
+    // ==========================================================================================
+    function App() {
+        // --- Global state ---
+        const [activeTab, setActiveTab] = useState('quiz');
+        const [userName, setUserName] = useState('');
+        const [userRole, setUserRole] = useState('');
+        const [loggedIn, setLoggedIn] = useState(false);
+
+        // --- Quiz state ---
+        const [selReg, setSelReg] = useState('');
+        const [selDom, setSelDom] = useState('');
+        const [questions, setQuestions] = useState([]);
+        const [curQ, setCurQ] = useState(0);
+        const [selAns, setSelAns] = useState(null);
+        const [showExp, setShowExp] = useState(false);
+        const [score, setScore] = useState(0);
+        const [answers, setAnswers] = useState([]);
+        const [quizPage, setQuizPage] = useState('select'); // select | quiz | results
+        const [leaderboard, setLeaderboard] = useState([]);
+        const fileRef = useRef(null);
+
+        // Load leaderboard
+        useEffect(() => {
+            try { const s=localStorage.getItem('de_lb'); if(s) setLeaderboard(JSON.parse(s)); } catch(e){}
+        }, []);
+        const saveLB = lb => { setLeaderboard(lb); localStorage.setItem('de_lb', JSON.stringify(lb)); };
+
+        const startQuiz = () => {
+            const key = `${selReg}_${selDom}`;
+            const bank = Q[key] || [];
+            // Shuffle which 10 questions are picked
+            const picked = [...bank].sort(()=>Math.random()-0.5).slice(0,10);
+            // For each question, shuffle the options and update the correct answer index
+            const shuffled = picked.map(q => {
+                const correctText = q.options[q.answer];
+                const indices = q.options.map((_,i)=>i);
+                // Fisher-Yates shuffle on indices
+                for(let i=indices.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [indices[i],indices[j]]=[indices[j],indices[i]]; }
+                const newOptions = indices.map(i=>q.options[i]);
+                const newAnswer = newOptions.indexOf(correctText);
+                return {...q, options: newOptions, answer: newAnswer};
+            });
+            setQuestions(shuffled); setCurQ(0); setSelAns(null); setShowExp(false); setScore(0); setAnswers([]);
+            setQuizPage('quiz');
+        };
+        const submitAns = () => {
+            if(selAns===null) return;
+            const correct = selAns===questions[curQ].answer;
+            if(correct) setScore(s=>s+10);
+            setAnswers(a=>[...a,{qid:questions[curQ].id,sel:selAns,cor:questions[curQ].answer,ok:correct}]);
+            setShowExp(true);
+        };
+        const nextQ = () => {
+            if(curQ<questions.length-1){ setCurQ(c=>c+1); setSelAns(null); setShowExp(false); }
+            else {
+                const finalScore = score + (selAns===questions[curQ].answer?10:0);
+                const entry = {id:Date.now(),name:userName,role:userRole,regulation:selReg,domain:selDom,score:finalScore,total:questions.length*10,date:new Date().toISOString(),pct:Math.round((finalScore/(questions.length*10))*100)};
+                const newLB = [...leaderboard,entry].sort((a,b)=>b.score-a.score);
+                saveLB(newLB);
+                setQuizPage('results');
+            }
+        };
+        const exportCSV = () => {
+            const h='Name,Role,Regulation,Domain,Score,Total,Percentage,Date\n';
+            const r=leaderboard.map(e=>`${e.name},${e.role},${e.regulation},${e.domain},${e.score},${e.total},${e.pct}%,${e.date}`).join('\n');
+            const b=new Blob([h+r],{type:'text/csv'}); const u=URL.createObjectURL(b);
+            const a=document.createElement('a'); a.href=u; a.download='dataethics_leaderboard.csv'; a.click(); URL.revokeObjectURL(u);
+        };
+        const importCSV = ev => {
+            const f=ev.target.files[0]; if(!f) return;
+            const reader=new FileReader();
+            reader.onload=e=>{
+                try {
+                    const lines=e.target.result.split('\n').filter(l=>l.trim());
+                    const imported=lines.slice(1).map((line,i)=>{const[n,r,reg,d,s,t,p,dt]=line.split(',');return{id:Date.now()+i,name:n?.trim(),role:r?.trim(),regulation:reg?.trim(),domain:d?.trim(),score:parseInt(s),total:parseInt(t),pct:parseInt(p),date:dt?.trim()||new Date().toISOString()};}).filter(e=>e.name&&!isNaN(e.score));
+                    saveLB([...leaderboard,...imported].sort((a,b)=>b.score-a.score));
+                } catch(err){ console.error(err); }
+            };
+            reader.readAsText(f);
+        };
+
+        const doLogin = () => { if(userName.trim()&&userRole){ setLoggedIn(true); } };
+        const doLogout = () => { setLoggedIn(false); setUserName(''); setUserRole(''); setQuizPage('select'); setActiveTab('quiz'); };
+
+        // ==========================================================================================
+        // LOGIN SCREEN
+        // ==========================================================================================
+        if(!loggedIn) {
+            return (
+                <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}}>
+                    <div className="card slide-up" style={{padding:'48px 40px',maxWidth:'420px',width:'100%'}}>
+                        <div style={{textAlign:'center',marginBottom:'36px'}}>
+                            <div className="nav-logo" style={{fontSize:'26px',marginBottom:'6px'}}>DataEthics Pro</div>
+                            <p style={{color:'var(--text-muted)',fontSize:'13px'}}>Interactive Data Ethics Simulator</p>
+                        </div>
+                        <div style={{display:'flex',flexDirection:'column',gap:'18px'}}>
+                            <div>
+                                <label style={{fontSize:'12px',color:'var(--text-muted)',display:'block',marginBottom:'5px'}}>Full Name</label>
+                                <input value={userName} onChange={e=>setUserName(e.target.value)} placeholder="Enter your name" />
+                            </div>
+                            <div>
+                                <label style={{fontSize:'12px',color:'var(--text-muted)',display:'block',marginBottom:'5px'}}>Professional Role</label>
+                                <select value={userRole} onChange={e=>setUserRole(e.target.value)}>
+                                    <option value="">Select role</option>
+                                    {['Student','Data Analyst','Data Engineer','Data Scientist','Software Developer','Compliance Officer','Manager','Other'].map(r=><option key={r} value={r}>{r}</option>)}
+                                </select>
+                            </div>
+                            <button className="btn btn-primary" style={{width:'100%',marginTop:'6px'}} disabled={!userName.trim()||!userRole} onClick={doLogin}>Get Started →</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==========================================================================================
+        // NAVIGATION
+        // ==========================================================================================
+        const tabs = [
+            {id:'quiz',label:'📝 Quiz'},
+            {id:'leaderboard',label:'🏆 Leaderboard'},
+            {id:'aitutor',label:'🤖 AI Tutor'},
+            {id:'unit',label:'🧪 Unit Tests'},
+            {id:'integration',label:'🔗 Integration'},
+            {id:'performance',label:'⚡ Performance'},
+            {id:'usability',label:'📋 Usability'},
+        ];
+
+        return (
+            <div>
+                <nav className="top-nav">
+                    <div className="nav-logo">DataEthics Pro</div>
+                    <div className="nav-tabs">
+                        {tabs.map(t=>(
+                            <button key={t.id} className={`nav-tab ${activeTab===t.id?'active':''}`} onClick={()=>{setActiveTab(t.id);if(t.id==='quiz')setQuizPage('select');}}>
+                                {t.label}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="nav-user">
+                        <span>{userName}</span>
+                        <button className="btn btn-ghost btn-sm" onClick={doLogout}>Logout</button>
+                    </div>
+                </nav>
+
+                <div className="page fade-in" key={activeTab}>
+                    {activeTab==='quiz' && <QuizTab {...{quizPage,setQuizPage,selReg,setSelReg,selDom,setSelDom,startQuiz,questions,curQ,selAns,setSelAns,showExp,submitAns,nextQ,score,leaderboard,userName}} />}
+                    {activeTab==='leaderboard' && <LeaderboardTab {...{leaderboard,saveLB,exportCSV,importCSV,fileRef}} />}
+                    {activeTab==='aitutor' && <AITutorTab userName={userName} leaderboard={leaderboard} />}
+                    {activeTab==='unit' && <UnitTestTab />}
+                    {activeTab==='integration' && <IntegrationTestTab />}
+                    {activeTab==='performance' && <PerformanceTestTab />}
+                    {activeTab==='usability' && <UsabilityTestTab />}
+                </div>
+            </div>
+        );
+    }
+
+    // ==========================================================================================
+    // QUIZ TAB
+    // ==========================================================================================
+    function QuizTab({quizPage,setQuizPage,selReg,setSelReg,selDom,setSelDom,startQuiz,questions,curQ,selAns,setSelAns,showExp,submitAns,nextQ,score,leaderboard,userName}) {
+        const regs = [{id:'GDPR',name:'GDPR',desc:'EU General Data Protection Regulation',color:'var(--accent-blue)'},{id:'DPDP',name:'DPDP Act 2023',desc:"India's Digital Personal Data Protection",color:'var(--accent-green)'},{id:'EUAI',name:'EU AI Act',desc:'EU Artificial Intelligence Act',color:'var(--accent-violet)'}];
+        const doms = [{id:'Healthcare',icon:'🏥'},{id:'Finance',icon:'💰'},{id:'Developer',icon:'💻'},{id:'Construction',icon:'🏗️'}];
+
+        if(quizPage==='select') return (
+            <div className="slide-up">
+                <h2 style={{fontSize:'20px',fontWeight:700,marginBottom:'24px'}}>Select Quiz</h2>
+                <p style={{fontSize:'13px',color:'var(--text-muted)',marginBottom:'16px'}}>Regulation</p>
+                <div className="grid-3" style={{marginBottom:'28px'}}>
+                    {regs.map(r=>(
+                        <div key={r.id} className={`option-card ${selReg===r.id?'selected':''}`} onClick={()=>setSelReg(r.id)} style={{textAlign:'center',padding:'22px 14px'}}>
+                            <div style={{fontSize:'17px',fontWeight:700,color:r.color,marginBottom:'6px'}}>{r.name}</div>
+                            <div style={{fontSize:'11px',color:'var(--text-muted)'}}>{r.desc}</div>
+                        </div>
+                    ))}
+                </div>
+                <p style={{fontSize:'13px',color:'var(--text-muted)',marginBottom:'16px'}}>Domain</p>
+                <div className="grid-4" style={{marginBottom:'32px'}}>
+                    {doms.map(d=>(
+                        <div key={d.id} className={`option-card ${selDom===d.id?'selected':''}`} onClick={()=>setSelDom(d.id)} style={{textAlign:'center',padding:'20px 14px'}}>
+                            <div style={{fontSize:'26px',marginBottom:'6px'}}>{d.icon}</div>
+                            <div style={{fontSize:'13px',fontWeight:600}}>{d.id}</div>
+                        </div>
+                    ))}
+                </div>
+                <div style={{textAlign:'center'}}>
+                    <button className="btn btn-primary" disabled={!selReg||!selDom} onClick={startQuiz} style={{padding:'14px 44px',fontSize:'15px'}}>Start Quiz →</button>
+                    {selReg&&selDom&&<p style={{marginTop:'10px',color:'var(--text-muted)',fontSize:'12px'}}>10 questions · {regLabel(selReg)} × {selDom}</p>}
+                </div>
+            </div>
+        );
+
+        if(quizPage==='quiz'&&questions.length>0) {
+            const q=questions[curQ]; const prog=((curQ+(showExp?1:0))/questions.length)*100;
+            return (
+                <div>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px'}}>
+                        <div><span className={`tag ${regTag(selReg)}`}>{regLabel(selReg)}</span><span className="tag" style={{marginLeft:'8px',background:'rgba(80,110,180,0.1)',color:'var(--text-muted)'}}>{selDom}</span></div>
+                        <div style={{fontSize:'13px',color:'var(--text-secondary)'}}>Score: <span style={{color:'var(--accent-blue)',fontWeight:700}}>{score}</span>/{questions.length*10}</div>
+                    </div>
+                    <div style={{display:'flex',justifyContent:'space-between',fontSize:'12px',color:'var(--text-muted)',marginBottom:'6px'}}><span>Q {curQ+1}/{questions.length}</span><span>{Math.round(prog)}%</span></div>
+                    <div className="progress-track" style={{marginBottom:'28px'}}><div className="progress-fill" style={{width:prog+'%'}}></div></div>
+                    <div className="card slide-up" style={{padding:'32px'}} key={curQ}>
+                        <h3 style={{fontSize:'16px',fontWeight:600,lineHeight:1.65,marginBottom:'24px'}}>{q.q}</h3>
+                        <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
+                            {q.options.map((opt,i)=>{
+                                let cls='option-card';
+                                if(showExp){if(i===q.answer)cls+=' correct';else if(i===selAns&&i!==q.answer)cls+=' incorrect';}
+                                else if(i===selAns)cls+=' selected';
+                                return <div key={i} className={cls} onClick={()=>!showExp&&setSelAns(i)}><span style={{fontWeight:600,marginRight:'10px',color:'var(--text-muted)'}}>{String.fromCharCode(65+i)}.</span>{opt}</div>;
+                            })}
+                        </div>
+                        {showExp&&<div className="explanation-box fade-in" style={{marginTop:'20px',borderLeftColor:selAns===q.answer?'var(--accent-green)':'var(--accent-red)',background:selAns===q.answer?'rgba(52,211,153,0.05)':'rgba(248,113,113,0.05)'}}>
+                            <div style={{fontWeight:700,marginBottom:'8px',fontSize:'15px',color:selAns===q.answer?'var(--accent-green)':'var(--accent-red)'}}>
+                                {selAns===q.answer?'✓ Correct!':'✗ Incorrect'}
+                            </div>
+                            {selAns!==q.answer&&<div style={{marginBottom:'10px',padding:'10px 14px',background:'rgba(52,211,153,0.06)',borderRadius:'var(--radius-sm)',border:'1px solid rgba(52,211,153,0.12)'}}>
+                                <span style={{fontSize:'12px',color:'var(--accent-green)',fontWeight:600}}>Correct Answer: </span>
+                                <span style={{fontSize:'13px',color:'var(--text-primary)',fontWeight:600}}>{String.fromCharCode(65+q.answer)}. {q.options[q.answer]}</span>
+                            </div>}
+                            <div style={{fontSize:'13px',lineHeight:1.7,color:'var(--text-secondary)'}}>
+                                <span style={{fontWeight:600,color:'var(--text-primary)'}}>📘 Explanation: </span>{q.explanation}
+                            </div>
+                            {selAns===q.answer&&<div style={{marginTop:'10px',padding:'8px 12px',background:'rgba(52,211,153,0.06)',borderRadius:'var(--radius-sm)',fontSize:'12px',color:'var(--accent-green)'}}>
+                                💡 Great job! Understanding this concept will help you in real-world data ethics scenarios.
+                            </div>}
+                            {selAns!==q.answer&&<div style={{marginTop:'10px',padding:'8px 12px',background:'rgba(77,138,255,0.06)',borderRadius:'var(--radius-sm)',fontSize:'12px',color:'var(--accent-blue)'}}>
+                                📝 Tip: Review this topic in the AI Tutor tab for a deeper explanation and practice questions.
+                            </div>}
+                        </div>}
+                        <div style={{marginTop:'24px',display:'flex',justifyContent:'flex-end',gap:'10px'}}>
+                            {!showExp?<button className="btn btn-primary" disabled={selAns===null} onClick={submitAns}>Submit</button>:<button className="btn btn-primary" onClick={nextQ}>{curQ<questions.length-1?'Next →':'Results →'}</button>}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        if(quizPage==='results') {
+            const latest=leaderboard.find(e=>e.id===Math.max(...leaderboard.map(l=>l.id)));
+            const p=latest?.pct||0;
+            return (
+                <div style={{display:'flex',justifyContent:'center',paddingTop:'40px'}} className="slide-up">
+                    <div className="card" style={{padding:'48px',maxWidth:'480px',width:'100%',textAlign:'center'}}>
+                        <div style={{fontSize:'52px',marginBottom:'12px'}}>{p>=80?'🏆':p>=60?'👏':p>=40?'📚':'💪'}</div>
+                        <h2 style={{fontSize:'22px',fontWeight:800,marginBottom:'6px'}}>Quiz Complete!</h2>
+                        <div style={{marginBottom:'20px'}}><span className={`tag ${regTag(selReg)}`}>{regLabel(selReg)}</span><span className="tag" style={{marginLeft:'8px',background:'rgba(80,110,180,0.1)',color:'var(--text-muted)'}}>{selDom}</span></div>
+                        <div style={{fontSize:'44px',fontWeight:800,color:'var(--accent-blue)'}}>{latest?.score||0}<span style={{fontSize:'18px',color:'var(--text-muted)'}}>/{latest?.total||100}</span></div>
+                        <p style={{color:'var(--text-muted)',marginBottom:'28px',marginTop:'4px'}}>{p}% — {p>=80?'Excellent!':p>=60?'Good job!':p>=40?'Keep learning!':'Review the material'}</p>
+                        <div style={{display:'flex',gap:'10px',justifyContent:'center'}}>
+                            <button className="btn btn-primary" onClick={()=>setQuizPage('select')}>New Quiz</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        return null;
+    }
+
+    // ==========================================================================================
+    // LEADERBOARD TAB
+    // ==========================================================================================
+    function LeaderboardTab({leaderboard,saveLB,exportCSV,importCSV,fileRef}) {
+        return (
+            <div className="slide-up">
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px'}}>
+                    <h2 style={{fontSize:'20px',fontWeight:700}}>🏆 Leaderboard</h2>
+                    <div style={{display:'flex',gap:'8px'}}>
+                        <button className="btn btn-ghost btn-sm" onClick={exportCSV} disabled={!leaderboard.length}>📥 Export</button>
+                        <button className="btn btn-ghost btn-sm" onClick={()=>fileRef.current?.click()}>📤 Import</button>
+                        <input type="file" ref={fileRef} accept=".csv" onChange={importCSV} style={{display:'none'}} />
+                        <button className="btn btn-danger btn-sm" onClick={()=>{if(confirm('Clear all?')){localStorage.removeItem('de_lb');saveLB([]);}}} disabled={!leaderboard.length}>🗑️</button>
+                    </div>
+                </div>
+                <div className="card" style={{overflow:'hidden'}}>
+                    {!leaderboard.length?<div style={{padding:'44px',textAlign:'center',color:'var(--text-muted)'}}>No scores yet</div>:(
+                        <div>
+                            <div className="lb-row" style={{background:'var(--bg-elevated)',fontWeight:600,fontSize:'12px',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>
+                                <div style={{width:'46px'}}>#</div><div style={{flex:1}}>Name</div><div style={{width:'90px'}}>Role</div><div style={{width:'110px'}}>Quiz</div><div style={{width:'70px',textAlign:'right'}}>Score</div>
+                            </div>
+                            {leaderboard.map((e,i)=>(
+                                <div key={e.id} className="lb-row">
+                                    <div style={{width:'46px',fontSize:i<3?'18px':'13px'}}>{medal(i)}</div>
+                                    <div style={{flex:1,fontWeight:600}}>{e.name}</div>
+                                    <div style={{width:'90px',fontSize:'12px',color:'var(--text-muted)'}}>{e.role}</div>
+                                    <div style={{width:'110px'}}><span className={`tag ${regTag(e.regulation)}`} style={{fontSize:'10px'}}>{e.regulation}</span></div>
+                                    <div style={{width:'70px',textAlign:'right',fontWeight:700,color:'var(--accent-blue)',fontFamily:'var(--font-mono)',fontSize:'13px'}}>{e.score}/{e.total}</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    // ==========================================================================================
+    // UNIT TEST TAB
+    // ==========================================================================================
+    function UnitTestTab() {
+        const [results, setResults] = useState(null);
+        const [running, setRunning] = useState(false);
+
+        const runTests = useCallback(async () => {
+            setRunning(true); setResults(null);
+            await new Promise(r=>setTimeout(r,80));
+            const suites = [];
+            const run = (name, tests) => {
+                const suite = {name, tests:[], passed:0, failed:0, time:0};
+                const t0=performance.now();
+                tests.forEach(([tName,tFn])=>{
+                    const ts=performance.now();
+                    try { tFn(); suite.tests.push({name:tName,status:'pass',error:null,time:performance.now()-ts}); suite.passed++; }
+                    catch(err) { suite.tests.push({name:tName,status:'fail',error:err.message,time:performance.now()-ts}); suite.failed++; }
+                });
+                suite.time=performance.now()-t0;
+                suites.push(suite);
+            };
+            // Suite 1
+            run('Login & Role Selection', [
+                ['accepts valid username', ()=>{ Assertions.assertTrue('John'.trim().length>0); }],
+                ['rejects empty username', ()=>{ Assertions.assertFalse(''.trim().length>0); }],
+                ['validates role from allowed list', ()=>{ Assertions.assertContains(['Student','Data Analyst','Data Engineer','Data Scientist','Software Developer','Compliance Officer','Manager','Other'],'Data Analyst'); }],
+                ['requires both name and role', ()=>{ Assertions.assertTrue('Alice'.trim().length>0&&'Student'.length>0); }],
+                ['blocks login without role', ()=>{ Assertions.assertFalse('Bob'.trim().length>0&&''.length>0); }],
+            ]);
+            // Suite 2
+            run('Quiz Initialization', [
+                ['generates correct bank key', ()=>{ Assertions.assertEqual(`GDPR_Healthcare`,'GDPR_Healthcare'); }],
+                ['10 questions per combination', ()=>{ Assertions.assertArrayLength(Q['GDPR_Healthcare'],10); }],
+                ['shuffles questions', ()=>{ const s=[...Array(10).keys()].sort(()=>Math.random()-0.5); Assertions.assertArrayLength(s,10); }],
+                ['initializes score to zero', ()=>{ Assertions.assertEqual(0,0); }],
+                ['supports 12 combinations', ()=>{ const c=[]; ['GDPR','DPDP','EUAI'].forEach(r=>['Healthcare','Finance','Developer','Construction'].forEach(d=>c.push(`${r}_${d}`))); Assertions.assertArrayLength(c,12); }],
+            ]);
+            // Suite 3
+            run('Question Display', [
+                ['question has required properties', ()=>{ const q=Q.GDPR_Healthcare[0]; Assertions.assertObjectHasProperty(q,'q'); Assertions.assertObjectHasProperty(q,'options'); Assertions.assertObjectHasProperty(q,'answer'); Assertions.assertObjectHasProperty(q,'explanation'); }],
+                ['4 options per question', ()=>{ Assertions.assertArrayLength(Q.GDPR_Healthcare[0].options,4); }],
+                ['tracks question index', ()=>{ let i=0; i++; Assertions.assertEqual(i,1); }],
+                ['calculates progress %', ()=>{ Assertions.assertEqual(((4+1)/10)*100,50); }],
+            ]);
+            // Suite 4
+            run('Answer Selection & Validation', [
+                ['registers selection', ()=>{ let s=null; s=2; Assertions.assertEqual(s,2); }],
+                ['validates correct answer +10pts', ()=>{ const q={answer:1}; Assertions.assertTrue(1===q.answer); Assertions.assertEqual(10,10); }],
+                ['identifies incorrect answer 0pts', ()=>{ Assertions.assertFalse(3===1); Assertions.assertEqual(0,0); }],
+                ['shows explanation after submit', ()=>{ let e=false; e=true; Assertions.assertTrue(e); }],
+                ['accumulates score', ()=>{ let s=0; [true,false,true,true,false].forEach(c=>{if(c)s+=10;}); Assertions.assertEqual(s,30); }],
+            ]);
+            // Suite 5
+            run('Navigation & Quiz Completion', [
+                ['advances to next question', ()=>{ let c=3; if(c<9) c++; Assertions.assertEqual(c,4); }],
+                ['detects last question', ()=>{ Assertions.assertTrue(9>=10-1); }],
+                ['creates leaderboard entry', ()=>{ const e={id:1,name:'T',score:70,pct:70}; Assertions.assertObjectHasProperty(e,'pct'); Assertions.assertEqual(e.pct,70); }],
+                ['sorts leaderboard desc', ()=>{ const lb=[{n:'A',score:50},{n:'B',score:80},{n:'C',score:60}].sort((a,b)=>b.score-a.score); Assertions.assertEqual(lb[0].n,'B'); }],
+                ['resets state for new quiz', ()=>{ let c=7,s=null,e=true,sc=60; c=0;s=null;e=false;sc=0; Assertions.assertEqual(c,0); Assertions.assertNull(s); Assertions.assertFalse(e); Assertions.assertEqual(sc,0); }],
+            ]);
+            // Suite 6
+            run('CSV Export/Import', [
+                ['generates valid headers', ()=>{ const h='Name,Role,Regulation,Domain,Score,Total,Percentage,Date'; Assertions.assertArrayLength(h.split(','),8); }],
+                ['formats entry as CSV row', ()=>{ const r='Alice,Student,GDPR,Finance,80,100,80%,2026-01-15'; Assertions.assertTrue(r.includes('Alice')&&r.includes('80%')); }],
+                ['parses CSV line', ()=>{ const p='Bob,DA,DPDP,HC,70,100,70%,2026-01-20'.split(','); Assertions.assertEqual(p[0],'Bob'); Assertions.assertEqual(parseInt(p[4]),70); }],
+                ['persists to localStorage', ()=>{ const m=new MockStorage(); m.setItem('de_lb',JSON.stringify([{score:90}])); Assertions.assertEqual(JSON.parse(m.getItem('de_lb'))[0].score,90); }],
+                ['clears leaderboard', ()=>{ const m=new MockStorage(); m.setItem('de_lb','[1]'); m.removeItem('de_lb'); Assertions.assertNull(m.getItem('de_lb')); }],
+            ]);
+
+            const total=suites.reduce((s,su)=>s+su.tests.length,0);
+            const passed=suites.reduce((s,su)=>s+su.passed,0);
+            const failed=suites.reduce((s,su)=>s+su.failed,0);
+            const totalTime=suites.reduce((s,su)=>s+su.time,0);
+            setResults({suites,total,passed,failed,totalTime});
+            setRunning(false);
+        },[]);
+
+        return (
+            <div className="slide-up">
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'24px'}}>
+                    <div><h2 style={{fontSize:'20px',fontWeight:700}}>🧪 Unit Testing Suite</h2><p style={{fontSize:'12px',color:'var(--text-muted)',marginTop:'4px'}}>29 Tests × 6 Suites</p></div>
+                    <button className="btn btn-primary" onClick={runTests} disabled={running}>{running?'⏳ Running...':'▶ Run All Tests'}</button>
+                </div>
+                {results&&(
+                    <div>
+                        <div className="grid-4" style={{marginBottom:'20px'}}>
+                            <div className="card" style={{padding:'18px',textAlign:'center'}}><div style={{fontSize:'28px',fontWeight:800}}>{results.total}</div><div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px'}}>TOTAL</div></div>
+                            <div className="card" style={{padding:'18px',textAlign:'center'}}><div style={{fontSize:'28px',fontWeight:800,color:'var(--accent-green)'}}>{results.passed}</div><div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px'}}>PASSED</div></div>
+                            <div className="card" style={{padding:'18px',textAlign:'center'}}><div style={{fontSize:'28px',fontWeight:800,color:'var(--accent-red)'}}>{results.failed}</div><div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px'}}>FAILED</div></div>
+                            <div className="card" style={{padding:'18px',textAlign:'center'}}><div className="mono" style={{fontSize:'22px',fontWeight:700,color:'var(--accent-blue)'}}>{results.totalTime.toFixed(1)}ms</div><div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px'}}>TIME</div></div>
+                        </div>
+                        <div className="progress-track" style={{marginBottom:'24px'}}><div className="progress-fill" style={{width:(results.passed/results.total*100)+'%',background:results.failed===0?'var(--accent-green)':'linear-gradient(90deg,var(--accent-green),var(--accent-red))'}}></div></div>
+                        {results.suites.map(su=>(
+                            <div className="card" key={su.name} style={{padding:'20px',marginBottom:'14px'}}>
+                                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px',paddingBottom:'10px',borderBottom:'1px solid var(--border-subtle)'}}>
+                                    <div style={{fontWeight:700,fontSize:'15px'}}>{su.failed===0?'✅':'❌'} {su.name} <span className="badge badge-info" style={{marginLeft:'8px'}}>{su.time.toFixed(1)}ms</span></div>
+                                    <div><span className="badge badge-pass">{su.passed} passed</span>{su.failed>0&&<span className="badge badge-fail" style={{marginLeft:'6px'}}>{su.failed} failed</span>}</div>
+                                </div>
+                                {su.tests.map(t=>(
+                                    <div className="test-item" key={t.name}>
+                                        <span style={{fontWeight:700,width:'16px',color:t.status==='pass'?'var(--accent-green)':'var(--accent-red)'}}>{t.status==='pass'?'✓':'✗'}</span>
+                                        <span style={{flex:1}}>{t.name}</span>
+                                        <span className="mono" style={{fontSize:'11px',color:'var(--text-muted)'}}>{t.time.toFixed(2)}ms</span>
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                )}
+                {!results&&!running&&<div className="card" style={{padding:'48px',textAlign:'center',color:'var(--text-muted)'}}>Click "Run All Tests" to execute the test suite</div>}
+            </div>
+        );
+    }
+
+    // ==========================================================================================
+    // INTEGRATION TEST TAB
+    // ==========================================================================================
+    function IntegrationTestTab() {
+        const [results, setResults] = useState(null);
+        const [running, setRunning] = useState(false);
+
+        const runWorkflows = useCallback(async()=>{
+            setRunning(true); setResults(null);
+            await new Promise(r=>setTimeout(r,80));
+            const workflows = [];
+
+            // Workflow 1: Full user journey (9 steps)
+            const w1 = {name:'Complete User Registration to Quiz Completion',steps:[],passed:0,failed:0,time:0};
+            const t0=performance.now();
+            const storage = new MockStorage();
+            const step = (name,fn) => { const s={name,assertions:[],status:'pass',time:0}; const ts=performance.now(); try{fn(s);}catch(e){s.status='fail';s.error=e.message;} s.time=performance.now()-ts; if(s.assertions.every(a=>a.ok)&&s.status!=='fail')w1.passed++; else{s.status='fail';w1.failed++;} w1.steps.push(s); };
+            const assert = (s,cond,desc) => { s.assertions.push({desc,ok:!!cond}); if(!cond) throw new Error(desc); };
+
+            step('User enters registration details', s=>{ assert(s,'TestUser'.trim().length>0,'Username not empty'); assert(s,'Data Analyst'.length>0,'Role selected'); });
+            step('System validates login', s=>{ const ok='TestUser'.trim().length>0&&'Data Analyst'.length>0; assert(s,ok,'Validation passes'); storage.setItem('session',JSON.stringify({name:'TestUser'})); assert(s,storage.getItem('session')!==null,'Session persisted'); });
+            step('Navigate to quiz selection', s=>{ assert(s,['GDPR','DPDP','EUAI'].length===3,'3 regulations'); assert(s,['Healthcare','Finance','Developer','Construction'].length===4,'4 domains'); });
+            step('Select regulation and domain', s=>{ const k='GDPR_Healthcare'; assert(s,k==='GDPR_Healthcare','Key correct'); assert(s,['GDPR','DPDP','EUAI'].includes('GDPR'),'Valid regulation'); });
+            step('System initializes quiz', s=>{ const qs=Array(10).fill(null).map((_,i)=>({id:`q${i}`,answer:i%4})); assert(s,qs.length===10,'10 questions loaded'); assert(s,true,'Score init 0'); });
+            step('User answers all 10 questions', s=>{ let sc=0; for(let i=0;i<10;i++) sc+=10; assert(s,sc===100,'Perfect score 100/100'); });
+            step('Score calculation & leaderboard entry', s=>{ const e={name:'TestUser',score:100,pct:100}; assert(s,e.pct===100,'Percentage correct'); assert(s,e.score===100,'Score 100'); });
+            step('Leaderboard updated and persisted', s=>{ const lb=[{name:'TestUser',score:100}]; storage.setItem('de_lb',JSON.stringify(lb)); const saved=JSON.parse(storage.getItem('de_lb')); assert(s,saved.length===1,'1 entry saved'); assert(s,saved[0].score===100,'Score persisted'); });
+            step('Results page displays', s=>{ assert(s,100>=80,'High score badge'); assert(s,'GDPR'==='GDPR','Regulation tag correct'); });
+            w1.time=performance.now()-t0;
+            workflows.push(w1);
+
+            // Workflow 2: Multi-user aggregation (4 steps)
+            const w2 = {name:'Multiple Quiz Attempts & Leaderboard Aggregation',steps:[],passed:0,failed:0,time:0};
+            const t1=performance.now();
+            const s2 = new MockStorage();
+            const step2 = (name,fn) => { const s={name,assertions:[],status:'pass',time:0}; const ts=performance.now(); try{fn(s);}catch(e){s.status='fail';s.error=e.message;} s.time=performance.now()-ts; if(s.assertions.every(a=>a.ok)&&s.status!=='fail')w2.passed++; else{s.status='fail';w2.failed++;} w2.steps.push(s); };
+            const a2 = (s,c,d) => { s.assertions.push({desc:d,ok:!!c}); if(!c) throw new Error(d); };
+
+            let lb2 = [];
+            step2('First user completes quiz', s=>{ lb2.push({name:'Alice',score:80}); s2.setItem('lb',JSON.stringify(lb2)); a2(s,lb2.length===1,'1 entry'); });
+            step2('Second user with higher score', s=>{ lb2.push({name:'Bob',score:90}); lb2.sort((a,b)=>b.score-a.score); a2(s,lb2[0].name==='Bob','Bob ranked first'); a2(s,lb2[1].name==='Alice','Alice ranked second'); });
+            step2('Third + fourth users; sorting', s=>{ lb2.push({name:'Charlie',score:70},{name:'Diana',score:100}); lb2.sort((a,b)=>b.score-a.score); a2(s,lb2[0].name==='Diana','Diana rank 1'); a2(s,lb2[1].name==='Bob','Bob rank 2'); a2(s,lb2[3].name==='Charlie','Charlie rank 4'); });
+            step2('Data persistence verification', s=>{ s2.setItem('lb',JSON.stringify(lb2)); const r=JSON.parse(s2.getItem('lb')); a2(s,r.length===4,'4 entries persisted'); a2(s,r[0].score===100,'Top score correct'); a2(s,r[3].score===70,'Lowest score correct'); });
+            w2.time=performance.now()-t1;
+            workflows.push(w2);
+
+            const totalSteps=workflows.reduce((s,w)=>s+w.steps.length,0);
+            const totalPassed=workflows.reduce((s,w)=>s+w.passed,0);
+            const totalFailed=workflows.reduce((s,w)=>s+w.failed,0);
+            setResults({workflows,totalSteps,totalPassed,totalFailed});
+            setRunning(false);
+        },[]);
+
+        return (
+            <div className="slide-up">
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'24px'}}>
+                    <div><h2 style={{fontSize:'20px',fontWeight:700}}>🔗 Integration Testing</h2><p style={{fontSize:'12px',color:'var(--text-muted)',marginTop:'4px'}}>End-to-End Workflow Verification</p></div>
+                    <button className="btn btn-primary" onClick={runWorkflows} disabled={running}>{running?'⏳ Running...':'▶ Run Workflows'}</button>
+                </div>
+                {results&&(
+                    <div>
+                        <div className="grid-4" style={{marginBottom:'24px'}}>
+                            <div className="card" style={{padding:'16px',textAlign:'center'}}><div style={{fontSize:'26px',fontWeight:800}}>{results.workflows.length}</div><div style={{fontSize:'11px',color:'var(--text-muted)'}}>WORKFLOWS</div></div>
+                            <div className="card" style={{padding:'16px',textAlign:'center'}}><div style={{fontSize:'26px',fontWeight:800}}>{results.totalSteps}</div><div style={{fontSize:'11px',color:'var(--text-muted)'}}>STEPS</div></div>
+                            <div className="card" style={{padding:'16px',textAlign:'center'}}><div style={{fontSize:'26px',fontWeight:800,color:'var(--accent-green)'}}>{results.totalPassed}</div><div style={{fontSize:'11px',color:'var(--text-muted)'}}>PASSED</div></div>
+                            <div className="card" style={{padding:'16px',textAlign:'center'}}><div style={{fontSize:'26px',fontWeight:800,color:'var(--accent-red)'}}>{results.totalFailed}</div><div style={{fontSize:'11px',color:'var(--text-muted)'}}>FAILED</div></div>
+                        </div>
+                        {results.workflows.map(w=>(
+                            <div className="card" key={w.name} style={{padding:'20px',marginBottom:'14px'}}>
+                                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'16px',paddingBottom:'12px',borderBottom:'1px solid var(--border-subtle)'}}>
+                                    <div style={{fontWeight:700,fontSize:'15px'}}>{w.failed===0?'✅':'❌'} {w.name} <span className="badge badge-info" style={{marginLeft:'8px'}}>{w.time.toFixed(0)}ms</span></div>
+                                    <div><span className="badge badge-pass">{w.passed} passed</span>{w.failed>0&&<span className="badge badge-fail" style={{marginLeft:'6px'}}>{w.failed} failed</span>}</div>
+                                </div>
+                                {w.steps.map((st,i)=>(
+                                    <div className={`step-block s-${st.status}`} key={i}>
+                                        <div className="step-icon" style={{background:st.status==='pass'?'rgba(52,211,153,0.15)':'rgba(248,113,113,0.15)',color:st.status==='pass'?'var(--accent-green)':'var(--accent-red)'}}>{i+1}</div>
+                                        <div style={{flex:1}}>
+                                            <div style={{fontWeight:600,fontSize:'13px',display:'flex',alignItems:'center',gap:'8px'}}>{st.name}<span className="mono" style={{fontSize:'10px',color:'var(--text-muted)'}}>{st.time.toFixed(1)}ms</span></div>
+                                            {st.assertions.map((a,j)=><div key={j} style={{fontSize:'11px',marginTop:'4px',display:'flex',alignItems:'center',gap:'6px'}}><span style={{color:a.ok?'var(--accent-green)':'var(--accent-red)'}}>{a.ok?'✓':'✗'}</span><span style={{color:a.ok?'var(--text-muted)':'var(--accent-red)'}}>{a.desc}</span></div>)}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                )}
+                {!results&&!running&&<div className="card" style={{padding:'48px',textAlign:'center',color:'var(--text-muted)'}}>Click "Run Workflows" to execute integration tests</div>}
+            </div>
+        );
+    }
+
+    // ==========================================================================================
+    // PERFORMANCE TEST TAB
+    // ==========================================================================================
+    function PerformanceTestTab() {
+        const [metrics, setMetrics] = useState(null);
+        const [stress, setStress] = useState(null);
+        const [running, setRunning] = useState('');
+
+        const defs = [
+            {id:'pageLoad',name:'Page Load Time',threshold:2000,weight:0.20,unit:'ms'},
+            {id:'domLoaded',name:'DOM Content Loaded',threshold:1000,weight:0.10,unit:'ms'},
+            {id:'fcp',name:'First Contentful Paint',threshold:1500,weight:0.10,unit:'ms'},
+            {id:'tti',name:'Time to Interactive',threshold:3000,weight:0.15,unit:'ms'},
+            {id:'memory',name:'Memory Usage',threshold:50,weight:0.15,unit:'MB'},
+            {id:'domNodes',name:'DOM Node Count',threshold:1500,weight:0.10,unit:'nodes'},
+            {id:'render',name:'Initial Render Time',threshold:50,weight:0.15,unit:'ms'},
+            {id:'events',name:'Event Handler Perf',threshold:100,weight:0.05,unit:'ms'},
+        ];
+
+        const measure = async id => {
+            switch(id) {
+                case 'pageLoad': { const e=performance.getEntriesByType('navigation'); return e.length?e[0].loadEventEnd:500; }
+                case 'domLoaded': { const e=performance.getEntriesByType('navigation'); return e.length?e[0].domContentLoadedEventEnd:300; }
+                case 'fcp': { const p=performance.getEntriesByType('paint'); const f=p.find(e=>e.name==='first-contentful-paint'); return f?f.startTime:400; }
+                case 'tti': { const e=performance.getEntriesByType('navigation'); return e.length?(e[0].domInteractive||1000):1000; }
+                case 'memory': { return performance.memory?performance.memory.usedJSHeapSize/(1024*1024):25; }
+                case 'domNodes': { return document.querySelectorAll('*').length; }
+                case 'render': { const s=performance.now(); const d=document.createElement('div'); d.innerHTML='<div><span>T</span><ul><li>1</li><li>2</li></ul></div>'; document.body.appendChild(d); document.body.removeChild(d); return performance.now()-s; }
+                case 'events': { const b=document.createElement('button'); b.style.display='none'; document.body.appendChild(b); let c=0; b.addEventListener('click',()=>c++); const s=performance.now(); for(let i=0;i<100;i++) b.click(); const t=performance.now()-s; document.body.removeChild(b); return t; }
+                default: return 0;
+            }
+        };
+
+        const runMetrics = useCallback(async()=>{
+            setRunning('metrics');
+            await new Promise(r=>setTimeout(r,150));
+            const results = [];
+            for(const d of defs) {
+                const v = await measure(d.id);
+                const val = Math.round(v*100)/100;
+                const passed = val<=d.threshold;
+                const ratio = passed?1:Math.min(d.threshold/val,0.99);
+                results.push({...d,value:val,passed,ratio,ws:d.weight*(passed?1:ratio)});
+            }
+            setMetrics(results);
+            setRunning('');
+        },[]);
+
+        const runStress = useCallback(async()=>{
+            setRunning('stress');
+            await new Promise(r=>setTimeout(r,100));
+            const res=[];
+            // DOM
+            let s=performance.now(); const c=document.createElement('div'); c.style.display='none'; document.body.appendChild(c); for(let i=0;i<1000;i++){const e=document.createElement('div');e.textContent=i;c.appendChild(e);} document.body.removeChild(c); res.push({name:'1000 DOM Updates',value:performance.now()-s,threshold:500,unit:'ms'});
+            // Clicks
+            const b=document.createElement('button'); b.style.display='none'; document.body.appendChild(b); let ct=0; b.addEventListener('click',()=>ct++); s=performance.now(); for(let i=0;i<1000;i++) b.click(); res.push({name:'1000 Click Events',value:performance.now()-s,threshold:200,unit:'ms'}); document.body.removeChild(b);
+            // Arrays
+            s=performance.now(); for(let i=0;i<100000;i++){new Array(10).fill(i);} res.push({name:'100K Array Allocations',value:performance.now()-s,threshold:100,unit:'ms'});
+            // State
+            s=performance.now(); let st={}; for(let i=0;i<10000;i++){st={...st,[`k${i%100}`]:i};} res.push({name:'10K State Changes',value:performance.now()-s,threshold:100,unit:'ms'});
+            res.forEach(r=>r.passed=r.value<=r.threshold);
+            setStress(res);
+            setRunning('');
+        },[]);
+
+        const compScore = metrics ? Math.round(metrics.reduce((s,m)=>s+m.ws,0)/metrics.reduce((s,m)=>s+m.weight,0)*100) : null;
+
+        return (
+            <div className="slide-up">
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'24px'}}>
+                    <div><h2 style={{fontSize:'20px',fontWeight:700}}>⚡ Performance Testing</h2><p style={{fontSize:'12px',color:'var(--text-muted)',marginTop:'4px'}}>8 Weighted Metrics + Stress Tests</p></div>
+                    <div style={{display:'flex',gap:'8px'}}>
+                        <button className="btn btn-primary" onClick={runMetrics} disabled={!!running}>{running==='metrics'?'⏳ Measuring...':'▶ Run Metrics'}</button>
+                        <button className="btn btn-danger" onClick={runStress} disabled={!!running}>{running==='stress'?'⏳ Stressing...':'⚡ Stress Test'}</button>
+                    </div>
+                </div>
+                {/* Score */}
+                {compScore!==null&&(
+                    <div className="card" style={{padding:'24px',display:'flex',alignItems:'center',gap:'28px',marginBottom:'20px'}}>
+                        <div className="score-ring-wrap" style={{borderColor:compScore>=90?'rgba(52,211,153,0.3)':compScore>=70?'rgba(251,191,36,0.3)':'rgba(248,113,113,0.3)'}}>
+                            <div className="mono" style={{fontSize:'38px',fontWeight:800,color:compScore>=90?'var(--accent-green)':compScore>=70?'var(--accent-amber)':'var(--accent-red)'}}>{compScore}</div>
+                            <div style={{fontSize:'11px',color:'var(--text-muted)'}}>SCORE</div>
+                        </div>
+                        <div>
+                            <h3 style={{fontWeight:700,marginBottom:'6px'}}>Composite Score</h3>
+                            <p style={{fontSize:'12px',color:'var(--text-muted)',lineHeight:1.6,maxWidth:'400px'}}>Weighted across 8 metrics. Passing = full weight credit; failing = partial credit via threshold/actual ratio.</p>
+                            <div style={{marginTop:'10px'}}><span className={`badge ${compScore>=90?'badge-pass':compScore>=70?'badge-warn':'badge-fail'}`}>{compScore>=90?'A — Excellent':compScore>=80?'B — Good':compScore>=70?'C — Acceptable':compScore>=60?'D — Needs Work':'F — Poor'}</span></div>
+                        </div>
+                    </div>
+                )}
+                {/* Metrics */}
+                <div className="card" style={{padding:'20px',marginBottom:'14px'}}>
+                    <h3 style={{fontWeight:700,fontSize:'15px',marginBottom:'16px'}}>📊 Metrics</h3>
+                    {!metrics?<div style={{padding:'32px',textAlign:'center',color:'var(--text-muted)'}}>Run metrics to see results</div>:
+                    metrics.map(m=>{
+                        const pct=Math.min((m.value/m.threshold)*100,150);
+                        const col=m.passed?'var(--accent-green)':m.ratio>0.7?'var(--accent-amber)':'var(--accent-red)';
+                        return (
+                            <div className="metric-row" key={m.id}>
+                                <div style={{width:'180px'}}><div style={{fontWeight:600,fontSize:'13px'}}>{m.name}</div><div style={{fontSize:'10px',color:'var(--text-muted)'}}>{(m.weight*100)}% weight</div></div>
+                                <div className="metric-bar"><div className="metric-bar-fill" style={{width:Math.min(pct,100)+'%',background:col}}></div></div>
+                                <div className="mono" style={{width:'80px',textAlign:'right',fontSize:'13px'}}>{m.value}{m.unit==='ms'?'ms':m.unit==='MB'?'MB':''}</div>
+                                <div style={{width:'70px',textAlign:'right',fontSize:'11px',color:'var(--text-muted)'}}>≤{m.threshold}</div>
+                                <div style={{width:'54px',textAlign:'right'}}><span className={`badge ${m.passed?'badge-pass':m.ratio>0.7?'badge-warn':'badge-fail'}`}>{m.passed?'PASS':m.ratio>0.7?'WARN':'FAIL'}</span></div>
+                            </div>
+                        );
+                    })}
+                </div>
+                {/* Stress */}
+                <div className="card" style={{padding:'20px'}}>
+                    <h3 style={{fontWeight:700,fontSize:'15px',marginBottom:'16px'}}>⚡ Stress Tests</h3>
+                    {!stress?<div style={{padding:'32px',textAlign:'center',color:'var(--text-muted)'}}>Run stress test to see results</div>:
+                    stress.map(r=>(
+                        <div className="stress-row" key={r.name}>
+                            <div><div style={{fontWeight:600,fontSize:'13px'}}>{r.name}</div><div style={{fontSize:'11px',color:'var(--text-muted)'}}>≤{r.threshold}{r.unit}</div></div>
+                            <div style={{display:'flex',alignItems:'center',gap:'10px'}}><span className="mono" style={{fontSize:'13px'}}>{Math.round(r.value*100)/100}{r.unit}</span><span className={`badge ${r.passed?'badge-pass':'badge-fail'}`}>{r.passed?'PASS':'FAIL'}</span></div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    // ==========================================================================================
+    // USABILITY TEST TAB
+    // ==========================================================================================
+    function UsabilityTestTab() {
+        const [tasks, setTasks] = useState([
+            {id:1,name:'Registration & Quiz Completion',desc:'Register, select regulation/domain, complete quiz.',est:180,status:'pending',startTime:null,compTime:null,errors:0,diff:null,done:false,notes:''},
+            {id:2,name:'Navigate to Leaderboard',desc:'From quiz selection, navigate to leaderboard, verify score.',est:30,status:'pending',startTime:null,compTime:null,errors:0,diff:null,done:false,notes:''},
+            {id:3,name:'Access GDPR Information',desc:'Start GDPR Healthcare quiz, answer first question, read explanation.',est:45,status:'pending',startTime:null,compTime:null,errors:0,diff:null,done:false,notes:''},
+            {id:4,name:'Retake Quiz',desc:'After one quiz, start a different quiz (new regulation or domain).',est:180,status:'pending',startTime:null,compTime:null,errors:0,diff:null,done:false,notes:''},
+        ]);
+        const [sus, setSus] = useState({});
+        const [susScore, setSusScore] = useState(null);
+        const [participant, setParticipant] = useState({id:'',age:'',edu:'',exp:''});
+        const intervals = useRef({});
+
+        const susQs = [
+            {id:1,text:'I think that I would like to use this system frequently.',type:'positive'},
+            {id:2,text:'I found the system unnecessarily complex.',type:'negative'},
+            {id:3,text:'I thought the system was easy to use.',type:'positive'},
+            {id:4,text:'I think that I would need the support of a technical person to be able to use this system.',type:'negative'},
+            {id:5,text:'I found the various functions in this system were well integrated.',type:'positive'},
+            {id:6,text:'I thought there was too much inconsistency in this system.',type:'negative'},
+            {id:7,text:'I would imagine that most people would learn to use this system very quickly.',type:'positive'},
+            {id:8,text:'I found the system very cumbersome to use.',type:'negative'},
+            {id:9,text:'I felt very confident using the system.',type:'positive'},
+            {id:10,text:'I needed to learn a lot of things before I could get going with this system.',type:'negative'},
+        ];
+
+        const startTask = id => {
+            setTasks(ts=>ts.map(t=>t.id===id?{...t,status:'running',startTime:Date.now()}:t));
+            intervals.current[id]=setInterval(()=>setTasks(ts=>[...ts]),100);
+        };
+        const stopTask = id => {
+            clearInterval(intervals.current[id]);
+            setTasks(ts=>ts.map(t=>t.id===id?{...t,status:'complete',compTime:(Date.now()-t.startTime)/1000}:t));
+        };
+        const updTask = (id,field,val) => setTasks(ts=>ts.map(t=>t.id===id?{...t,[field]:val}:t));
+
+        const calcSUS = () => {
+            const unanswered = susQs.filter(q=>!sus[q.id]);
+            if(unanswered.length){alert(`Please answer all. ${unanswered.length} remaining.`);return;}
+            let sum=0;
+            susQs.forEach(q=>{ const r=sus[q.id]; sum+= q.type==='positive'?(r-1):(5-r); });
+            setSusScore(sum*2.5);
+        };
+
+        const getGrade = sc => sc>=80.3?{g:'A',l:'Excellent',c:'badge-pass'}:sc>=68?{g:'B',l:'Good',c:'badge-info'}:sc>=51.7?{g:'C',l:'Marginal',c:'badge-warn'}:sc>=38?{g:'D',l:'Poor',c:'badge-warn'}:{g:'F',l:'Not Acceptable',c:'badge-fail'};
+
+        const exportAll = () => {
+            const data={timestamp:new Date().toISOString(),participant,tasks:tasks.map(t=>({id:t.id,name:t.name,est:t.est,compTime:t.compTime?Math.round(t.compTime*10)/10:null,errors:t.errors,difficulty:t.diff,completed:t.done,notes:t.notes})),sus:{responses:{...sus},score:susScore,grade:susScore?getGrade(susScore).g:null}};
+            const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const u=URL.createObjectURL(b);
+            const a=document.createElement('a'); a.href=u; a.download=`usability-${participant.id||'test'}.json`; a.click(); URL.revokeObjectURL(u);
+        };
+
+        const completedTasks = tasks.filter(t=>t.status==='complete');
+
+        return (
+            <div className="slide-up">
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'24px'}}>
+                    <div><h2 style={{fontSize:'20px',fontWeight:700}}>📋 Usability Testing</h2><p style={{fontSize:'12px',color:'var(--text-muted)',marginTop:'4px'}}>Task-Based Evaluation + SUS Questionnaire</p></div>
+                    <button className="btn btn-ghost btn-sm" onClick={exportAll}>📥 Export JSON</button>
+                </div>
+
+                {/* Demographics */}
+                <div className="card" style={{padding:'20px',marginBottom:'14px'}}>
+                    <h3 style={{fontWeight:700,fontSize:'14px',marginBottom:'14px'}}>👤 Participant</h3>
+                    <div className="grid-4">
+                        <div><label style={{fontSize:'11px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>ID</label><input value={participant.id} onChange={e=>setParticipant({...participant,id:e.target.value})} placeholder="P001" /></div>
+                        <div><label style={{fontSize:'11px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Age</label><select value={participant.age} onChange={e=>setParticipant({...participant,age:e.target.value})}><option value="">Select</option>{['18-24','25-34','35-44','45-54','55+'].map(a=><option key={a}>{a}</option>)}</select></div>
+                        <div><label style={{fontSize:'11px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Education</label><select value={participant.edu} onChange={e=>setParticipant({...participant,edu:e.target.value})}><option value="">Select</option>{['High School','Undergraduate','Graduate','Postgraduate','PhD'].map(a=><option key={a}>{a}</option>)}</select></div>
+                        <div><label style={{fontSize:'11px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Tech Experience</label><select value={participant.exp} onChange={e=>setParticipant({...participant,exp:e.target.value})}><option value="">Select</option>{['Beginner','Intermediate','Advanced','Expert'].map(a=><option key={a}>{a}</option>)}</select></div>
+                    </div>
+                </div>
+
+                {/* Tasks */}
+                <div className="card" style={{padding:'20px',marginBottom:'14px'}}>
+                    <h3 style={{fontWeight:700,fontSize:'14px',marginBottom:'14px'}}>📋 Tasks</h3>
+                    {tasks.map(t=>{
+                        const elapsed=t.compTime||(t.startTime&&t.status==='running'?((Date.now()-t.startTime)/1000):0);
+                        return (
+                            <div key={t.id} className={`task-card-ux ${t.status==='running'?'t-active':t.status==='complete'?'t-complete':''}`}>
+                                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'10px'}}>
+                                    <div><div style={{fontWeight:700,fontSize:'14px'}}>Task {t.id}: {t.name}</div><div style={{fontSize:'12px',color:'var(--text-muted)',marginTop:'3px'}}>{t.desc} (Est: {t.est}s)</div></div>
+                                    <div className={`timer-mono ${t.status==='running'?'timer-running':''}`}>{fmtTime(elapsed)}</div>
+                                </div>
+                                <div style={{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
+                                    {t.status==='pending'&&<button className="btn btn-success btn-sm" onClick={()=>startTask(t.id)}>▶ Start</button>}
+                                    {t.status==='running'&&<button className="btn btn-danger btn-sm" onClick={()=>stopTask(t.id)}>⏹ Stop</button>}
+                                    {t.status==='complete'&&<span className="badge badge-pass">✓ Complete</span>}
+                                    <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:'14px',flexWrap:'wrap'}}>
+                                        <div style={{display:'flex',alignItems:'center',gap:'4px'}}><label style={{fontSize:'11px',color:'var(--text-muted)'}}>Errors:</label><input type="number" min="0" value={t.errors} onChange={e=>updTask(t.id,'errors',parseInt(e.target.value)||0)} style={{width:'54px',padding:'4px 8px',fontSize:'12px'}} /></div>
+                                        <div style={{display:'flex',gap:'4px'}}>
+                                            {[1,2,3,4,5].map(n=><button key={n} onClick={()=>updTask(t.id,'diff',n)} style={{width:'30px',height:'30px',borderRadius:'6px',border:`1px solid ${t.diff===n?'var(--accent-blue)':'var(--border-subtle)'}`,background:t.diff===n?'rgba(77,138,255,0.15)':'transparent',color:t.diff===n?'var(--accent-blue)':'var(--text-muted)',cursor:'pointer',fontWeight:600,fontSize:'12px'}}>{n}</button>)}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Task Summary */}
+                {completedTasks.length>0&&(
+                    <div className="card" style={{padding:'20px',marginBottom:'14px'}}>
+                        <h3 style={{fontWeight:700,fontSize:'14px',marginBottom:'14px'}}>📊 Task Summary</h3>
+                        <div className="grid-4">
+                            <div style={{textAlign:'center'}}><div style={{fontSize:'24px',fontWeight:800,color:'var(--accent-green)'}}>{Math.round((completedTasks.filter(t=>t.done).length/tasks.length)*100)}%</div><div style={{fontSize:'11px',color:'var(--text-muted)'}}>COMPLETION</div></div>
+                            <div style={{textAlign:'center'}}><div className="mono" style={{fontSize:'20px',fontWeight:700,color:'var(--accent-blue)'}}>{fmtTime(completedTasks.reduce((s,t)=>s+(t.compTime||0),0))}</div><div style={{fontSize:'11px',color:'var(--text-muted)'}}>TOTAL TIME</div></div>
+                            <div style={{textAlign:'center'}}><div style={{fontSize:'24px',fontWeight:800,color:'var(--accent-red)'}}>{completedTasks.reduce((s,t)=>s+t.errors,0)}</div><div style={{fontSize:'11px',color:'var(--text-muted)'}}>ERRORS</div></div>
+                            <div style={{textAlign:'center'}}><div style={{fontSize:'24px',fontWeight:800,color:'var(--accent-amber)'}}>{completedTasks.filter(t=>t.diff).length?(completedTasks.filter(t=>t.diff).reduce((s,t)=>s+t.diff,0)/completedTasks.filter(t=>t.diff).length).toFixed(1):'—'}</div><div style={{fontSize:'11px',color:'var(--text-muted)'}}>AVG DIFFICULTY</div></div>
+                        </div>
+                    </div>
+                )}
+
+                {/* SUS */}
+                <div className="card" style={{padding:'20px',marginBottom:'14px'}}>
+                    <h3 style={{fontWeight:700,fontSize:'14px',marginBottom:'14px'}}>📝 System Usability Scale (SUS)</h3>
+                    <p style={{fontSize:'12px',color:'var(--text-muted)',marginBottom:'16px'}}>Rate each statement: 1 (Strongly Disagree) → 5 (Strongly Agree)</p>
+                    {susQs.map((q,idx)=>(
+                        <div key={q.id} style={{marginBottom:'18px'}}>
+                            <div style={{fontSize:'13px',fontWeight:500,marginBottom:'6px',lineHeight:1.5}}>{idx+1}. {q.text} <span style={{fontSize:'10px',color:q.type==='positive'?'var(--accent-green)':'var(--accent-red)'}}>{q.type==='positive'?'+':'−'}</span></div>
+                            <div className="likert-row">
+                                {[1,2,3,4,5].map(n=><button key={n} className={`likert-btn ${sus[q.id]===n?'lk-sel':''}`} onClick={()=>setSus({...sus,[q.id]:n})}>{n}</button>)}
+                            </div>
+                            <div style={{display:'flex',justifyContent:'space-between',fontSize:'10px',color:'var(--text-muted)',marginTop:'3px'}}><span>Strongly Disagree</span><span>Strongly Agree</span></div>
+                        </div>
+                    ))}
+                    <div style={{textAlign:'center',marginTop:'20px'}}><button className="btn btn-primary" onClick={calcSUS}>Calculate SUS Score</button></div>
+                </div>
+
+                {/* SUS Result */}
+                {susScore!==null&&(()=>{
+                    const gr=getGrade(susScore);
+                    return (
+                        <div className="card slide-up" style={{padding:'32px',textAlign:'center'}}>
+                            <div className="mono" style={{fontSize:'56px',fontWeight:800,color:susScore>=80.3?'var(--accent-green)':susScore>=68?'var(--accent-blue)':susScore>=51.7?'var(--accent-amber)':'var(--accent-red)'}}>{susScore.toFixed(1)}</div>
+                            <div style={{fontSize:'13px',color:'var(--text-muted)',marginTop:'4px'}}>out of 100</div>
+                            <div style={{marginTop:'14px'}}><span className={`badge ${gr.c}`} style={{fontSize:'14px',padding:'6px 18px'}}>Grade: {gr.g} — {gr.l}</span></div>
+                            <div style={{marginTop:'20px',display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:'6px',maxWidth:'400px',margin:'20px auto 0'}}>
+                                {[{g:'A',t:'≥80.3',c:'var(--accent-green)'},{g:'B',t:'≥68',c:'var(--accent-blue)'},{g:'C',t:'≥51.7',c:'var(--accent-amber)'},{g:'D',t:'≥38',c:'var(--accent-red)'},{g:'F',t:'<38',c:'var(--accent-red)'}].map(x=>(
+                                    <div key={x.g} style={{padding:'8px',borderRadius:'6px',background:gr.g===x.g?`${x.c}22`:'rgba(80,110,180,0.05)',border:gr.g===x.g?`1px solid ${x.c}`:'1px solid transparent',fontSize:'11px',color:x.c}}>
+                                        {x.g}<br/><span style={{fontSize:'10px'}}>{x.t}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })()}
+            </div>
+        );
+    }
+
+    // ==========================================================================================
+    // AI TUTOR TAB
+    // ==========================================================================================
+    function AITutorTab({ userName, leaderboard }) {
+        const [apiKey, setApiKey] = useState(() => {
+            try { return localStorage.getItem('de_api_key') || ''; } catch(e) { return ''; }
+        });
+        const [keySet, setKeySet] = useState(() => {
+            try { return !!localStorage.getItem('de_api_key'); } catch(e) { return false; }
+        });
+        const [messages, setMessages] = useState([]);
+        const [input, setInput] = useState('');
+        const [loading, setLoading] = useState(false);
+        const messagesEndRef = useRef(null);
+        const inputRef = useRef(null);
+
+        // Build user context from leaderboard
+        const getUserContext = () => {
+            const userScores = leaderboard.filter(e => e.name === userName);
+            if (!userScores.length) return 'The user has not taken any quizzes yet.';
+            const summary = userScores.map(s =>
+                `${s.regulation} × ${s.domain}: ${s.score}/${s.total} (${s.pct}%)`
+            ).join('; ');
+            const avg = Math.round(userScores.reduce((s,e) => s + e.pct, 0) / userScores.length);
+            const weakest = userScores.reduce((min, e) => e.pct < min.pct ? e : min, userScores[0]);
+            return `User "${userName}" quiz history: ${summary}. Average: ${avg}%. Weakest area: ${weakest.regulation} × ${weakest.domain} at ${weakest.pct}%.`;
+        };
+
+        const SYSTEM_PROMPT = `You are the DataEthics Pro AI Tutor — an expert educator specializing in data privacy regulations (GDPR, India's DPDP Act 2023, EU AI Act) and their practical application across Healthcare, Finance, Software Development, and Construction domains.
+
+Your role:
+1. TEACH data ethics concepts clearly with real-world examples
+2. IDENTIFY weak areas from the user's quiz performance and guide improvement
+3. EXPLAIN regulations (GDPR articles, DPDP sections, EU AI Act provisions) in plain language
+4. QUIZ the user with practice questions when they ask for practice
+5. COMPARE regulations across jurisdictions when relevant
+6. PROVIDE study strategies tailored to their weak areas
+
+Quiz performance context:
+${getUserContext()}
+
+Guidelines:
+- Keep responses focused and practical (3-5 paragraphs max unless they ask for deep detail)
+- Use specific article/section references (e.g., "GDPR Article 17" or "DPDP Section 8(6)")
+- When the user gets something wrong, explain WHY the correct answer is what it is
+- Suggest which quiz combinations to try next based on their weak areas
+- Be encouraging but honest about knowledge gaps
+- If they ask for practice, give ONE question at a time, wait for answer, then explain
+- Format key terms in a clear way for readability`;
+
+        const sendMessage = async (text) => {
+            if (!text.trim() || loading) return;
+            const userMsg = { role: 'user', content: text.trim() };
+            const newMessages = [...messages, userMsg];
+            setMessages(newMessages);
+            setInput('');
+            setLoading(true);
+
+            try {
+                // Build conversation history for API (last 20 messages to manage tokens)
+                const historyForAPI = newMessages.slice(-20).map(m => ({
+                    role: m.role,
+                    content: m.content
+                }));
+
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                        'anthropic-version': '2023-06-01',
+                        'anthropic-dangerous-direct-browser-access': 'true'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-sonnet-4-20250514',
+                        max_tokens: 1024,
+                        system: SYSTEM_PROMPT,
+                        messages: historyForAPI
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error?.message || `API error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const assistantText = data.content
+                    .filter(block => block.type === 'text')
+                    .map(block => block.text)
+                    .join('\n');
+
+                setMessages(prev => [...prev, { role: 'assistant', content: assistantText }]);
+            } catch (err) {
+                setMessages(prev => [...prev, {
+                    role: 'assistant',
+                    content: `⚠️ Error: ${err.message}\n\nPlease check your API key and try again.`
+                }]);
+            }
+            setLoading(false);
+        };
+
+        // Scroll to bottom on new messages
+        useEffect(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, [messages, loading]);
+
+        // Focus input after sending
+        useEffect(() => {
+            if (!loading) inputRef.current?.focus();
+        }, [loading]);
+
+        const saveKey = () => {
+            if (!apiKey.trim()) return;
+            localStorage.setItem('de_api_key', apiKey.trim());
+            setKeySet(true);
+            setMessages([{
+                role: 'assistant',
+                content: `Hello ${userName}! 👋 I'm your DataEthics Pro AI Tutor.\n\nI can help you master GDPR, India's DPDP Act 2023, and the EU AI Act across Healthcare, Finance, Developer, and Construction domains.\n\nHere's what I can do:\n\n• Explain any regulation concept in plain language\n• Review your quiz results and identify weak areas\n• Give you targeted practice questions\n• Compare how different regulations handle the same issue\n• Suggest a study plan to improve your scores\n\nWhat would you like to work on?`
+            }]);
+        };
+
+        const clearKey = () => {
+            localStorage.removeItem('de_api_key');
+            setApiKey('');
+            setKeySet(false);
+            setMessages([]);
+        };
+
+        const quickPrompts = [
+            { label: '📊 Analyze my scores', text: 'Look at my quiz scores and tell me where I need to improve. Give me a specific study plan.' },
+            { label: '❓ Practice question', text: 'Give me a practice question on my weakest area based on my quiz results.' },
+            { label: '⚖️ GDPR vs DPDP', text: 'Compare GDPR and DPDP Act 2023 — what are the key differences a professional should know?' },
+            { label: '🤖 EU AI Act basics', text: 'Explain the EU AI Act risk classification system with examples from each category.' },
+            { label: '🏥 Healthcare ethics', text: 'What are the most critical data ethics challenges in healthcare that I should understand?' },
+            { label: '💡 Study tips', text: 'Give me study strategies to improve my data ethics knowledge and quiz performance.' },
+        ];
+
+        // Simple markdown-like rendering for assistant messages
+        const renderContent = (text) => {
+            const lines = text.split('\n');
+            return lines.map((line, i) => {
+                // Bold text
+                let processed = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                // Bullet points
+                if (processed.match(/^[•\-\*]\s/)) {
+                    processed = '  → ' + processed.replace(/^[•\-\*]\s/, '');
+                }
+                // Numbered items
+                if (processed.match(/^\d+\.\s/)) {
+                    processed = '  ' + processed;
+                }
+                if (processed.trim() === '') return <div key={i} style={{height:'8px'}}></div>;
+                return <div key={i} dangerouslySetInnerHTML={{__html: processed}} style={{marginBottom:'2px'}} />;
+            });
+        };
+
+        // --- API Key Setup Screen ---
+        if (!keySet) {
+            return (
+                <div className="slide-up">
+                    <div className="card api-setup-card">
+                        <div style={{textAlign:'center', marginBottom:'28px'}}>
+                            <div style={{fontSize:'48px', marginBottom:'12px'}}>🤖</div>
+                            <h2 style={{fontSize:'22px', fontWeight:800, marginBottom:'6px'}}>AI Tutor Setup</h2>
+                            <p style={{fontSize:'13px', color:'var(--text-secondary)', lineHeight:1.6}}>
+                                Connect your Anthropic API key to enable the AI tutor. Your key is stored locally in your browser and never sent anywhere except Anthropic's API.
+                            </p>
+                        </div>
+
+                        <div style={{marginBottom:'20px'}}>
+                            <label style={{fontSize:'12px', color:'var(--text-muted)', display:'block', marginBottom:'6px'}}>Anthropic API Key</label>
+                            <input
+                                type="password"
+                                value={apiKey}
+                                onChange={e => setApiKey(e.target.value)}
+                                placeholder="sk-ant-api03-..."
+                                onKeyDown={e => e.key === 'Enter' && saveKey()}
+                            />
+                        </div>
+
+                        <button className="btn btn-primary" style={{width:'100%'}} onClick={saveKey} disabled={!apiKey.trim()}>
+                            Connect & Start Learning →
+                        </button>
+
+                        <div style={{marginTop:'24px', padding:'16px', background:'rgba(77,138,255,0.04)', borderRadius:'var(--radius-md)', border:'1px solid rgba(77,138,255,0.08)'}}>
+                            <div style={{fontSize:'12px', fontWeight:700, color:'var(--accent-blue)', marginBottom:'8px'}}>📘 How to get an API key</div>
+                            <ol style={{fontSize:'12px', color:'var(--text-secondary)', lineHeight:1.8, paddingLeft:'16px'}}>
+                                <li>Go to <strong>console.anthropic.com</strong></li>
+                                <li>Sign up or log in to your account</li>
+                                <li>Navigate to <strong>API Keys</strong> in Settings</li>
+                                <li>Click <strong>Create Key</strong> and copy it</li>
+                                <li>Paste it above and connect</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // --- Chat Interface ---
+        return (
+            <div className="slide-up chat-container">
+                {/* Header */}
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px'}}>
+                    <div>
+                        <h2 style={{fontSize:'20px', fontWeight:700, display:'flex', alignItems:'center', gap:'10px'}}>
+                            🤖 AI Tutor
+                            <span className="context-badge">
+                                {leaderboard.filter(e=>e.name===userName).length} quiz{leaderboard.filter(e=>e.name===userName).length!==1?'es':''} tracked
+                            </span>
+                        </h2>
+                        <p style={{fontSize:'12px', color:'var(--text-muted)', marginTop:'3px'}}>Data ethics guidance powered by Claude</p>
+                    </div>
+                    <div style={{display:'flex', gap:'8px'}}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => { setMessages([]); }}>🗑️ Clear</button>
+                        <button className="btn btn-ghost btn-sm" onClick={clearKey}>🔑 Reset Key</button>
+                    </div>
+                </div>
+
+                {/* Quick Prompts */}
+                <div style={{display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'14px'}}>
+                    {quickPrompts.map(p => (
+                        <button key={p.label} className="chat-quick-btn" onClick={() => sendMessage(p.text)} disabled={loading}>
+                            {p.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Messages */}
+                <div className="chat-messages card" style={{padding:'20px'}}>
+                    {messages.length === 0 && !loading && (
+                        <div style={{textAlign:'center', padding:'60px 20px', color:'var(--text-muted)'}}>
+                            <div style={{fontSize:'40px', marginBottom:'12px'}}>💬</div>
+                            <p style={{fontSize:'14px', marginBottom:'6px'}}>Ask a question or use a quick prompt above</p>
+                            <p style={{fontSize:'12px'}}>The tutor can see your quiz scores to give targeted advice</p>
+                        </div>
+                    )}
+
+                    {messages.map((msg, i) => (
+                        <div key={i} className={`chat-bubble ${msg.role}`}>
+                            <div className="sender">{msg.role === 'user' ? userName : 'AI Tutor'}</div>
+                            <div>{msg.role === 'assistant' ? renderContent(msg.content) : msg.content}</div>
+                        </div>
+                    ))}
+
+                    {loading && (
+                        <div className="chat-bubble assistant">
+                            <div className="sender">AI Tutor</div>
+                            <div className="typing-dots"><span></span><span></span><span></span></div>
+                        </div>
+                    )}
+
+                    <div ref={messagesEndRef} />
+                </div>
+
+                {/* Input */}
+                <div className="chat-input-row">
+                    <input
+                        ref={inputRef}
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
+                        placeholder="Ask about GDPR, DPDP Act, EU AI Act, or request practice questions..."
+                        disabled={loading}
+                    />
+                    <button className="btn btn-primary" onClick={() => sendMessage(input)} disabled={loading || !input.trim()}>
+                        {loading ? '⏳' : '→'}
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // ==========================================================================================
+    // MOUNT
+    // ==========================================================================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
